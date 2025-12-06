@@ -61,9 +61,14 @@ interface User {
   id: string;
   firstName: string;
   lastName: string;
+  name?: string;
   email: string;
   mobileNumber: string;
   role?: string;
+  emergencyContact?: {
+    name: string;
+    phone: string;
+  };
 }
 
 interface AuthContextType {
@@ -175,9 +180,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           id: userResponse.data.id,
           firstName: userResponse.data.firstName,
           lastName: userResponse.data.lastName,
+          name: userResponse.data.name,
           email: userResponse.data.email,
           mobileNumber: userResponse.data.mobileNumber,
           role: userResponse.data.role,
+          emergencyContact: userResponse.data.emergencyContact,
         };
         
         // Store user session data

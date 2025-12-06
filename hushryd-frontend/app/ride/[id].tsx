@@ -5,6 +5,8 @@ import { getReviewsForUser, getRideById } from '@/services/mockData';
 import { Stack, router, useLocalSearchParams } from 'expo-router';
 import React, { useState } from 'react';
 import { Alert, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useAuth } from '@/contexts/AuthContext';
+import { sendBookingNotifications } from '@/services/bookingNotificationService';
 
 export default function RideDetailsScreen() {
   const colorScheme = useColorScheme();
@@ -13,6 +15,7 @@ export default function RideDetailsScreen() {
 
   const ride = getRideById(id as string);
   const [selectedSeats, setSelectedSeats] = useState(1);
+  const { user } = useAuth();
 
   if (!ride) {
     return (
@@ -41,11 +44,33 @@ export default function RideDetailsScreen() {
         },
         {
           text: 'Confirm Booking',
-          onPress: () => {
-            // Simulate booking process
+          onPress: async () => {
+            try {
+              const passengerName = [user?.firstName, user?.lastName]
+                .filter(Boolean)
+                .join(' ')
+                .trim() || user?.name || 'Passenger';
+
+              await sendBookingNotifications({
+                ride,
+                seats: selectedSeats,
+                totalPrice,
+                passenger: {
+                  name: passengerName,
+                  phone: user?.mobileNumber,
+                  email: user?.email,
+                  emergencyContact: user?.emergencyContact,
+                },
+              });
+            } catch (error) {
+              console.warn('Failed to send booking notifications', error);
+            }
+
             Alert.alert(
               '🎉 Booking Successful!',
-              `Your booking is confirmed!\n\nBooking ID: #BK${Date.now().toString().slice(-6)}\nSeats: ${selectedSeats}\nTotal: ${CURRENCY_SYMBOL}${totalPrice}\n\nDriver will contact you soon for pickup details.`,
+              `Your booking is confirmed!\n\nBooking ID: #BK${Date.now()
+                .toString()
+                .slice(-6)}\nSeats: ${selectedSeats}\nTotal: ${CURRENCY_SYMBOL}${totalPrice}\n\nDriver will contact you soon for pickup details.`,
               [
                 {
                   text: 'View My Rides',
@@ -55,7 +80,7 @@ export default function RideDetailsScreen() {
                   text: 'Book Another Ride',
                   onPress: () => router.push('/(tabs)/'),
                 },
-              ]
+              ],
             );
           },
         },

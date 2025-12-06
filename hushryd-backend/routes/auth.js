@@ -6,6 +6,78 @@ const { executeQuery } = require('../config/database');
 
 const router = express.Router();
 
+// Helper function to get client IP address
+const getClientIp = (req) => {
+  return req.headers['x-forwarded-for']?.split(',')[0] || 
+         req.headers['x-real-ip'] || 
+         req.connection?.remoteAddress || 
+         req.socket?.remoteAddress ||
+         'Unknown';
+};
+
+// Helper function to parse user agent
+const parseUserAgent = (userAgent) => {
+  if (!userAgent) return { deviceType: 'Unknown', deviceName: 'Unknown' };
+  
+  const ua = userAgent.toLowerCase();
+  let deviceType = 'Desktop';
+  let deviceName = 'Unknown';
+
+  if (ua.includes('mobile') || ua.includes('android') || ua.includes('iphone')) {
+    deviceType = 'Mobile';
+    if (ua.includes('iphone')) deviceName = 'iPhone';
+    else if (ua.includes('android')) deviceName = 'Android';
+    else deviceName = 'Mobile Device';
+  } else if (ua.includes('tablet') || ua.includes('ipad')) {
+    deviceType = 'Tablet';
+    deviceName = ua.includes('ipad') ? 'iPad' : 'Tablet';
+  } else if (ua.includes('windows')) {
+    deviceName = 'Windows';
+  } else if (ua.includes('mac')) {
+    deviceName = 'Mac';
+  } else if (ua.includes('linux')) {
+    deviceName = 'Linux';
+  }
+
+  return { deviceType, deviceName };
+};
+
+// Helper function to create session
+const createSession = async (userId, userType, token, req) => {
+  try {
+    const sessionId = uuidv4();
+    const ipAddress = getClientIp(req);
+    const userAgent = req.headers['user-agent'] || '';
+    const { deviceType, deviceName } = parseUserAgent(userAgent);
+    const expiresAt = new Date();
+    expiresAt.setHours(expiresAt.getHours() + 24); // 24 hours from now
+
+    await executeQuery(`
+      INSERT INTO user_sessions (
+        id, user_id, user_type, token, ip_address, user_agent, 
+        device_type, device_name, is_active, expires_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `, [
+      sessionId,
+      userId,
+      userType,
+      token.substring(0, 500),
+      ipAddress,
+      userAgent.substring(0, 500),
+      deviceType,
+      deviceName,
+      true,
+      expiresAt
+    ]);
+
+    return sessionId;
+  } catch (error) {
+    console.error('Error creating session:', error);
+    // Don't fail login if session creation fails
+    return null;
+  }
+};
+
 // Middleware to verify JWT token
 const authenticateToken = (req, res, next) => {
   const authHeader = req.headers['authorization'];
@@ -176,6 +248,9 @@ router.post('/login', async (req, res) => {
       { expiresIn: process.env.JWT_EXPIRES_IN || '24h' }
     );
 
+    // Create session
+    await createSession(user.id, 'user', token, req);
+
     res.json({
       error: false,
       message: 'Login successful',
@@ -265,6 +340,9 @@ router.post('/admin/login', async (req, res) => {
       process.env.JWT_SECRET || 'your_secret_key',
       { expiresIn: process.env.JWT_EXPIRES_IN || '24h' }
     );
+
+    // Create session
+    await createSession(admin.id, 'admin', token, req);
 
     res.json({
       error: false,
@@ -436,8 +514,23 @@ router.put('/change-password', authenticateToken, async (req, res) => {
 const logoutHandler = async (req, res) => {
   try {
     const userId = req.user.id;
+    const token = req.headers['authorization']?.split(' ')[1] || '';
     
     console.log('Logout requested for user:', userId);
+    
+    // End all active sessions for this user (or just the current one)
+    try {
+      await executeQuery(`
+        UPDATE user_sessions 
+        SET is_active = FALSE, logout_at = CURRENT_TIMESTAMP 
+        WHERE user_id = ? AND is_active = TRUE
+        ORDER BY login_at DESC
+        LIMIT 1
+      `, [userId]);
+    } catch (sessionError) {
+      console.error('Error ending session:', sessionError);
+      // Continue with logout even if session update fails
+    }
     
     // In a real implementation with Redis/blacklist:
     // You would add the token to a blacklist here

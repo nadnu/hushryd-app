@@ -1,12 +1,17 @@
 import { router } from 'expo-router';
-import React, { useState } from 'react';
+import type { OTPTextInput } from 'react-native-otp-entry';
+import React, { useEffect, useRef, useState } from 'react';
 import { Alert, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import Button from '../../components/Button';
 import HushRydLogoImage from '../../components/HushRydLogoImage';
 import Input from '../../components/Input';
+import OTPInputField from '../../components/OTPInputField';
+import { useOTPAutoFill } from '../../hooks/useOTPAutoFill';
 import { useColorScheme } from '../../components/useColorScheme';
 import Colors from '../../constants/Colors';
 import { FontSizes, Shadows, Spacing } from '../../constants/Design';
+import { apiService } from '../../services/apiService';
+import { generateOTP } from '../../services/notificationService';
 
 export default function LoginScreen() {
   const colorScheme = useColorScheme();
@@ -17,6 +22,13 @@ export default function LoginScreen() {
   const [loading, setLoading] = useState(false);
   const [otpSent, setOtpSent] = useState(false);
   const [otpTimer, setOtpTimer] = useState(0);
+  const [generatedOtp, setGeneratedOtp] = useState('');
+  const otpInputRef = useRef<OTPTextInput | null>(null);
+
+  useOTPAutoFill((code) => {
+    setOtp(code);
+    otpInputRef.current?.setValue?.(code);
+  });
 
   // OTP Timer effect
   React.useEffect(() => {
@@ -42,11 +54,13 @@ export default function LoginScreen() {
 
     setLoading(true);
     try {
-      // Simulate API call to send OTP
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      const otpCode = generateOTP();
+      setOtp('');
+      const response = await apiService.sendOTP(mobileNumber, otpCode);
       
       setOtpSent(true);
       setOtpTimer(60); // 60 seconds timer
+      setGeneratedOtp(otpCode);
       Alert.alert('Success', `OTP sent to ${mobileNumber}`);
     } catch (error) {
       Alert.alert('Error', 'Failed to send OTP. Please try again.');
@@ -68,14 +82,21 @@ export default function LoginScreen() {
 
     setLoading(true);
     try {
-      // Simulate API call to verify OTP
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Mock authentication logic based on mobile number
-      if (mobileNumber === '9876543210') {
-        router.replace('/admin/dashboard');
+      const response = await apiService.verifyOTP(mobileNumber, otp);
+      console.log('OTP verification response:', response);
+
+      if (response.success || otp === generatedOtp) {
+        console.log('OTP verified successfully');
+        Alert.alert('Success', 'Login successful!', [
+          {
+            text: 'Continue',
+            onPress: () => router.replace('/(tabs)/'),
+          },
+        ]);
+        setGeneratedOtp('');
       } else {
-        router.replace('/(tabs)/' as any);
+        console.log('OTP verification failed:', response.message);
+        Alert.alert('Error', response.message || 'Invalid OTP. Please try again.');
       }
     } catch (error) {
       Alert.alert('Error', 'Invalid OTP. Please try again.');
@@ -132,14 +153,11 @@ export default function LoginScreen() {
 
               {/* OTP Input - Only show after OTP is sent */}
               {otpSent && (
-                <Input
-                  label="OTP"
-                  placeholder="Enter 6-digit OTP"
+                <OTPInputField
+                  ref={otpInputRef}
                   value={otp}
-                  onChangeText={setOtp}
-                  keyboardType="numeric"
-                  maxLength={6}
-                  icon={<Text style={styles.inputIcon}>🔐</Text>}
+                  onChange={setOtp}
+                  disabled={!otpSent}
                 />
               )}
 

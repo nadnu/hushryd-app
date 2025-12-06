@@ -34,7 +34,7 @@ yarn-error.*
 .env*.local
 
 # API keys and config
-config/
+config/maps.ts
 
 # typescript
 *.tsbuildinfo
@@ -42,3 +42,14 @@ config/
 # generated native folders
 /ios
 /android
+
+# Build outputs
+builds/
+*.apk
+*.aab
+*.ipa
+*.keystore
+keystore.properties
+
+# AWS deployment
+deployment-*.json

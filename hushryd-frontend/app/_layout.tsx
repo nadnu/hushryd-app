@@ -5,12 +5,14 @@ import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
 import 'react-native-reanimated';
+import { Platform } from 'react-native';
 
 import DatabaseSeeder from '@/components/DatabaseSeeder';
 import MigrationRunner from '@/components/MigrationRunner';
 import { NotificationProvider } from '@/components/NotificationProvider';
 import { useColorScheme } from '@/components/useColorScheme';
 import { AuthProvider } from '@/contexts/AuthContext';
+import { RideProvider } from '@/contexts/RideContext';
 
 export {
     // Catch any errors thrown by the Layout component.
@@ -26,10 +28,19 @@ export const unstable_settings = {
 SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
-  const [loaded, error] = useFonts({
-    SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
-    ...FontAwesome.font,
-  });
+  const [loaded, error] = useFonts(
+    Platform.select({
+      web: {
+        ...FontAwesome.font,
+      },
+      default: {
+        SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
+        ...FontAwesome.font,
+      },
+    }) ?? {
+      ...FontAwesome.font,
+    }
+  );
 
   // Expo Router uses Error Boundaries to catch errors in the navigation tree.
   useEffect(() => {
@@ -54,22 +65,24 @@ function RootLayoutNav() {
 
   return (
     <AuthProvider>
-      <DatabaseSeeder autoSeed={true} />
-      <MigrationRunner autoRun={true} />
-      <NotificationProvider>
-        <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-          <Stack initialRouteName="splash">
-            <Stack.Screen name="splash" options={{ headerShown: false }} />
-            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-            <Stack.Screen name="auth" options={{ headerShown: false }} />
-            <Stack.Screen name="admin" options={{ headerShown: false }} />
-            <Stack.Screen name="ride" options={{ headerShown: false }} />
-            <Stack.Screen name="vehicles" options={{ headerShown: false }} />
-            <Stack.Screen name="search" options={{ headerShown: false }} />
-            <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
-          </Stack>
-        </ThemeProvider>
-      </NotificationProvider>
+      <RideProvider>
+        <DatabaseSeeder autoSeed={true} />
+        <MigrationRunner autoRun={true} />
+        <NotificationProvider>
+          <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+            <Stack initialRouteName="splash">
+              <Stack.Screen name="splash" options={{ headerShown: false }} />
+              <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+              <Stack.Screen name="auth" options={{ headerShown: false }} />
+              <Stack.Screen name="admin" options={{ headerShown: false }} />
+              <Stack.Screen name="ride" options={{ headerShown: false }} />
+              <Stack.Screen name="vehicles" options={{ headerShown: false }} />
+              <Stack.Screen name="search" options={{ headerShown: false }} />
+              <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
+            </Stack>
+          </ThemeProvider>
+        </NotificationProvider>
+      </RideProvider>
     </AuthProvider>
   );
 }

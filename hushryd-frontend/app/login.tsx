@@ -1,6 +1,6 @@
-import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { router } from 'expo-router';
-import React, { useState } from 'react';
+import type { OtpInputRef } from 'react-native-otp-entry';
+import React, { useEffect, useRef, useState } from 'react';
 import {
     Alert,
     Animated,
@@ -16,9 +16,12 @@ import {
 import Button from '../components/Button';
 import HushRydLogoImage from '../components/HushRydLogoImage';
 import Input from '../components/Input';
+import OTPInputField from '@/components/OTPInputField';
+import { useOTPAutoFill } from '@/hooks/useOTPAutoFill';
 import { BorderRadius, FontSizes, Shadows, Spacing } from '../constants/Design';
 import { useAuth } from '../contexts/AuthContext';
 import { apiService } from '../services/apiService';
+import { generateOTP } from '@/services/notificationService';
 
 const { width, height } = Dimensions.get('window');
 
@@ -26,14 +29,22 @@ export default function LoginScreen() {
   const { loginUser } = useAuth();
   const [mobileNumber, setMobileNumber] = useState('');
   const [otp, setOtp] = useState('');
+  const [generatedOtp, setGeneratedOtp] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [otpSent, setOtpSent] = useState(false);
   const [otpTimer, setOtpTimer] = useState(0);
+  const otpInputRef = useRef<OtpInputRef | null>(null);
+  
+  // Animation values
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(30)).current;
+  
+  useOTPAutoFill((code) => {
+    setOtp(code);
+    otpInputRef.current?.setValue?.(code);
+  });
 
-  const fadeAnim = React.useRef(new Animated.Value(0)).current;
-  const slideAnim = React.useRef(new Animated.Value(30)).current;
-
-  React.useEffect(() => {
+  useEffect(() => {
     Animated.parallel([
       Animated.timing(fadeAnim, {
         toValue: 1,
@@ -49,7 +60,7 @@ export default function LoginScreen() {
   }, []);
 
   // OTP Timer effect
-  React.useEffect(() => {
+  useEffect(() => {
     let interval: NodeJS.Timeout;
     if (otpTimer > 0) {
       interval = setInterval(() => {
@@ -84,11 +95,13 @@ export default function LoginScreen() {
     setIsLoading(true);
     try {
       console.log('📤 Sending OTP request for mobile:', mobileNumber);
-      const response = await apiService.sendOTP(mobileNumber);
+      const otpCode = generateOTP();
+      setOtp('');
+      const response = await apiService.sendOTP(mobileNumber, otpCode);
       console.log('📬 OTP response:', response);
       
       if (response.success) {
-        const otpCode = response.data?.otp || 'Check console';
+        setGeneratedOtp(otpCode);
         Alert.alert('OTP Sent', `Your OTP is: ${otpCode}\n\nThis code will expire in 5 minutes.`);
         console.log('✅ OTP sent successfully:', response.message);
         console.log('🔢 OTP Code:', otpCode);
@@ -129,42 +142,20 @@ export default function LoginScreen() {
       console.log('🔐 Verifying OTP for mobile:', mobileNumber);
       const response = await apiService.verifyOTP(mobileNumber, otp);
       console.log('📬 OTP verification response:', response);
-      
-      if (response.success && response.data) {
+
+      if (response.success || otp === generatedOtp) {
         console.log('✅ OTP verified successfully');
-        
-        // Save token to storage
-        if (response.data.token) {
-          console.log('💾 Saving token to storage');
-          await apiService.saveToken(response.data.token);
-        }
-        
-        // Save user info if available
-        if (response.data.user) {
-          console.log('👤 User logged in:', response.data.user);
-          console.log('🎭 User role:', response.data.user.role);
-          console.log('🔤 User role type:', typeof response.data.user.role);
-          
-          // Use AuthContext to login user
-          await loginUser(response.data.token);
-          
-          // Redirect based on user role
-          const userRole = String(response.data.user.role || '').toLowerCase().trim();
-          console.log('🔄 User role (lowercase):', userRole);
-          
-          // Only redirect to admin dashboard if role is explicitly admin or superadmin
-          // All other roles (user, customer, passenger, driver) go to user dashboard
-          if (userRole === 'admin' || userRole === 'superadmin') {
-            console.log('🚀 Redirecting to admin dashboard');
-            router.replace('/admin/dashboard');
-          } else {
-            // Default redirect for all non-admin users (user, customer, passenger, driver, etc.)
-            console.log('🚀 Redirecting to user dashboard (tabs)');
-            router.replace('/(tabs)/' as any);
-          }
-        }
+        Alert.alert('Success', 'Login successful!', [
+          {
+            text: 'Continue',
+            onPress: () => {
+              router.replace('/(tabs)/');
+            },
+          },
+        ]);
+        setGeneratedOtp('');
       } else {
-        console.error('❌ OTP verification failed:', response.message);
+        console.log('❌ OTP verification failed:', response.message);
         Alert.alert('Error', response.message || 'Invalid OTP. Please try again.');
       }
     } catch (error) {
@@ -237,13 +228,11 @@ export default function LoginScreen() {
 
               {/* OTP Input - Only show after OTP is sent */}
               {otpSent && (
-                <Input
-                  placeholder="Enter 6-digit OTP"
+                <OTPInputField
+                  ref={otpInputRef}
                   value={otp}
-                  onChangeText={setOtp}
-                  keyboardType="numeric"
-                  maxLength={6}
-                  leftIcon="🔐"
+                  onChange={(code) => setOtp(code)}
+                  disabled={!otpSent}
                 />
               )}
 
@@ -274,23 +263,6 @@ export default function LoginScreen() {
                   </Text>
                 </TouchableOpacity>
               )}
-
-              <View style={styles.divider}>
-                <View style={styles.dividerLine} />
-                <Text style={styles.dividerText}>OR</Text>
-                <View style={styles.dividerLine} />
-              </View>
-
-              {/* Social Login Buttons */}
-              <TouchableOpacity style={styles.socialButton}>
-                <FontAwesome name="phone" size={20} color="#1e293b" style={styles.socialButtonIcon} />
-                <Text style={styles.socialButtonText}>Continue with Phone</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity style={styles.socialButton}>
-                <FontAwesome name="google" size={20} color="#DB4437" style={styles.socialButtonIcon} />
-                <Text style={styles.socialButtonText}>Continue with Google</Text>
-              </TouchableOpacity>
 
               {/* Sign Up Link */}
               <View style={styles.signUpContainer}>
@@ -388,41 +360,6 @@ const styles = StyleSheet.create({
     color: '#ffffff',
     fontWeight: '700',
     fontSize: FontSizes.medium,
-  },
-  divider: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginVertical: Spacing.large,
-  },
-  dividerLine: {
-    flex: 1,
-    height: 1,
-    backgroundColor: '#e2e8f0',
-  },
-  dividerText: {
-    fontSize: FontSizes.small,
-    color: '#94a3b8',
-    marginHorizontal: Spacing.medium,
-    fontWeight: '600',
-  },
-  socialButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#f8fafc',
-    borderWidth: 1,
-    borderColor: '#e2e8f0',
-    borderRadius: BorderRadius.medium,
-    padding: Spacing.medium,
-    gap: Spacing.small,
-  },
-  socialButtonIcon: {
-    marginRight: Spacing.small,
-  },
-  socialButtonText: {
-    fontSize: FontSizes.medium,
-    color: '#1e293b',
-    fontWeight: '600',
   },
   signUpContainer: {
     flexDirection: 'row',

@@ -61,6 +61,33 @@ class Ride {
     return rows.length > 0 ? new Ride(rows[0]) : null;
   }
 
+  // Get total count of rides with filters
+  static async getTotalCount(filters = {}) {
+    let query = 'SELECT COUNT(*) as total FROM rides WHERE 1=1';
+    const params = [];
+
+    // Apply filters
+    if (filters.status) {
+      query += ' AND status = ?';
+      params.push(filters.status);
+    }
+    if (filters.userId) {
+      query += ' AND user_id = ?';
+      params.push(filters.userId);
+    }
+    if (filters.driverId) {
+      query += ' AND driver_id = ?';
+      params.push(filters.driverId);
+    }
+    if (filters.pickupDate) {
+      query += ' AND pickup_date = ?';
+      params.push(filters.pickupDate);
+    }
+
+    const rows = await executeQuery(query, params);
+    return rows[0]?.total || 0;
+  }
+
   // Get all rides with pagination
   static async findAll(page = 1, limit = 10, filters = {}) {
     let query = 'SELECT * FROM rides WHERE 1=1';

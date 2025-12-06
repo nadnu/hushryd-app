@@ -175,9 +175,121 @@ const requirePermission = (permission) => {
   };
 };
 
+// Authenticate either admin or user token
+const authenticateAdminOrUser = async (req, res, next) => {
+  try {
+    const authHeader = req.headers['authorization'];
+    const token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN
+
+    console.log('🔐 authenticateAdminOrUser - Token check:', {
+      hasAuthHeader: !!authHeader,
+      hasToken: !!token,
+      endpoint: req.path
+    });
+
+    if (!token) {
+      return res.status(401).json({
+        error: true,
+        message: 'Access token required'
+      });
+    }
+
+    // Verify token
+    let decoded;
+    try {
+      decoded = jwt.verify(token, process.env.JWT_SECRET || 'your_secret_key');
+      console.log('✅ Token verified. ID:', decoded.id);
+    } catch (jwtError) {
+      if (jwtError.name === 'TokenExpiredError') {
+        return res.status(401).json({
+          error: true,
+          message: 'Token has expired'
+        });
+      } else if (jwtError.name === 'JsonWebTokenError') {
+        return res.status(401).json({
+          error: true,
+          message: 'Invalid token'
+        });
+      }
+      throw jwtError;
+    }
+    
+    // Try to authenticate as admin first
+    try {
+      const admin = await Admin.findById(decoded.id);
+      if (admin) {
+        // Check if admin is active (handle both boolean and 0/1 values)
+        const isActive = admin.isActive === true || admin.isActive === 1 || admin.isActive === '1';
+        if (!isActive) {
+          console.error('❌ Admin account is deactivated:', admin.id);
+          return res.status(401).json({
+            error: true,
+            message: 'Admin account is deactivated'
+          });
+        }
+        req.admin = admin.toAuthJSON();
+        req.user = null; // Clear user if admin is found
+        console.log('✅ Authenticated as admin:', {
+          id: admin.id,
+          email: admin.email,
+          role: admin.role
+        });
+        return next();
+      }
+    } catch (adminError) {
+      console.error('❌ Error checking admin:', adminError);
+      console.error('Admin error stack:', adminError.stack);
+      // Continue to check user
+    }
+
+    // If not admin, try to authenticate as user
+    try {
+      const user = await User.findById(decoded.id);
+      if (user) {
+        // Check if user is active (handle both boolean and 0/1 values)
+        const isActive = user.isActive === true || user.isActive === 1 || user.isActive === '1';
+        if (!isActive) {
+          console.error('❌ User account is deactivated:', user.id);
+          return res.status(401).json({
+            error: true,
+            message: 'User account is deactivated'
+          });
+        }
+        req.user = user.toJSON();
+        req.admin = null; // Clear admin if user is found
+        console.log('✅ Authenticated as user:', {
+          id: user.id,
+          email: user.email
+        });
+        return next();
+      }
+    } catch (userError) {
+      console.error('❌ Error checking user:', userError);
+      console.error('User error stack:', userError.stack);
+    }
+
+    // Neither admin nor user found
+    console.error('❌ Neither admin nor user found for ID:', decoded.id);
+    return res.status(401).json({
+      error: true,
+      message: 'Invalid token - user or admin not found'
+    });
+
+  } catch (error) {
+    console.error('❌ authenticateAdminOrUser error:', error);
+    console.error('Error stack:', error.stack);
+    return res.status(500).json({
+      error: true,
+      message: 'Authentication error',
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+};
+
 module.exports = {
   authenticateToken,
   authenticateAdmin,
+  authenticateAdminOrUser,
   requireRole,
   requirePermission
 };

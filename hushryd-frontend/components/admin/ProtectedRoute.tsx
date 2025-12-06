@@ -19,10 +19,10 @@ export default function ProtectedRoute({ children, requiredRole, pageId }: Prote
   const colors = Colors[colorScheme ?? 'light'];
 
   useEffect(() => {
-    if (!isLoading && !isAuthenticated) {
+    if (!isLoading && !admin) {
       router.replace('/admin/login' as any);
     }
-  }, [isAuthenticated, isLoading]);
+  }, [admin, isLoading]);
 
   if (isLoading) {
     return (
@@ -44,7 +44,7 @@ export default function ProtectedRoute({ children, requiredRole, pageId }: Prote
     );
   }
 
-  if (!isAuthenticated || !admin) {
+  if (!admin) {
     return null; // Will redirect to login
   }
 

@@ -22,6 +22,10 @@ import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import React, { useMemo, useState } from 'react';
 import { Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
+import { useClientOnlyValue } from '@/components/useClientOnlyValue';
+import { useAuth } from '@/contexts/AuthContext';
+import { useRide } from '@/contexts/RideContext';
 
 export default function HomeScreen() {
   const colorScheme = useColorScheme();
@@ -31,6 +35,8 @@ export default function HomeScreen() {
     'all' | 'early-morning' | 'morning' | 'late-morning' | 'afternoon' | 'evening' | 'late-evening' | 'night'
   >('all');
   const [showLiveChat, setShowLiveChat] = useState(false);
+  const { user } = useAuth();
+  const { activeRide } = useRide();
 
   const handleSearch = (params: SearchParams) => {
     router.push({
@@ -297,9 +303,11 @@ export default function HomeScreen() {
       <View style={styles.bottomPadding} />
     </ScrollView>
     
-    <View style={styles.sosButtonContainer}>
-      <SOSButton variant="floating" />
-    </View>
+    {activeRide && (
+      <View style={styles.sosButtonContainer}>
+        <SOSButton variant="floating" />
+      </View>
+    )}
     
     <TouchableOpacity
       style={styles.liveChatButton}

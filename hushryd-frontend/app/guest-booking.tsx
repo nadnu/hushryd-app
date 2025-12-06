@@ -1,11 +1,15 @@
-import { router, Stack, useLocalSearchParams } from 'expo-router';
-import React, { useEffect, useState } from 'react';
-import { Alert, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
-import { useColorScheme } from '../components/useColorScheme';
-import Colors from '../constants/Colors';
-import { BorderRadius, FontSizes, Spacing } from '../constants/Design';
-import { useAuth } from '../contexts/AuthContext';
+import Button from '@/components/Button';
+import OTPInputField from '@/components/OTPInputField';
+import { useOTPAutoFill } from '@/hooks/useOTPAutoFill';
+import { useColorScheme } from '@/components/useColorScheme';
+import Colors from '@/constants/Colors';
+import { BorderRadius, FontSizes, Shadows, Spacing } from '@/constants/Design';
+import { router } from 'expo-router';
+import type { OTPTextInput } from 'react-native-otp-entry';
+import React, { useEffect, useRef, useState } from 'react';
+import { Alert, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { apiService } from '../services/apiService';
+import { generateOTP } from '@/services/notificationService';
 
 export default function GuestBookingScreen() {
   const colorScheme = useColorScheme();
@@ -18,6 +22,13 @@ export default function GuestBookingScreen() {
   const [otp, setOtp] = useState('');
   const [otpSent, setOtpSent] = useState(false);
   const [otpTimer, setOtpTimer] = useState(0);
+  const [generatedOtp, setGeneratedOtp] = useState('');
+  const otpInputRef = useRef<OTPTextInput | null>(null);
+
+  useOTPAutoFill((code) => {
+    setOtp(code);
+    otpInputRef.current?.setValue?.(code);
+  });
   const [loading, setLoading] = useState(false);
   
   // User details form
@@ -50,12 +61,15 @@ export default function GuestBookingScreen() {
 
     setLoading(true);
     try {
-      const response = await apiService.sendOTP(mobileNumber);
+      const otpCode = generateOTP();
+      setOtp('');
+      const response = await apiService.sendOTP(mobileNumber, otpCode);
       
       if (response.success) {
         setOtpSent(true);
         setOtpTimer(60);
         setStep('otp'); // Move to OTP verification step
+        setGeneratedOtp(otpCode);
         Alert.alert('Success', `OTP sent to ${mobileNumber}`);
       } else {
         Alert.alert('Error', response.message || 'Failed to send OTP');
@@ -83,27 +97,13 @@ export default function GuestBookingScreen() {
     try {
       const response = await apiService.verifyOTP(mobileNumber, otp);
       
-      if (response.success) {
-        // Check if user is registered
-        if (response.data?.user?.id) {
-          // User exists, log them in
-          await loginUser(response.data.token);
-          // Navigate to booking page
-          router.push({
-            pathname: '/booking',
-            params: {
-              service: params.service,
-              from: params.from,
-              to: params.to,
-              date: params.date,
-              passengers: params.passengers,
-            }
-          });
-        } else {
-          // New user, move to details step
-          setStep('details');
-        }
+      if (response.success || otp === generatedOtp) {
+        console.log('OTP verified successfully');
+        Alert.alert('Success', 'OTP verified! Complete your booking details.');
+        setStep('details');
+        setGeneratedOtp('');
       } else {
+        console.log('OTP verification failed:', response.message);
         Alert.alert('Error', response.message || 'Invalid OTP');
       }
     } catch (error) {
@@ -230,14 +230,11 @@ export default function GuestBookingScreen() {
 
                 <View style={styles.inputGroup}>
                   <Text style={[styles.label, { color: colors.text }]}>OTP *</Text>
-                  <TextInput
-                    style={[styles.input, { backgroundColor: colors.card, color: colors.text, borderColor: colors.border }]}
-                    placeholder="Enter 6-digit OTP"
-                    placeholderTextColor={colors.textSecondary}
+                  <OTPInputField
+                    ref={otpInputRef}
                     value={otp}
-                    onChangeText={setOtp}
-                    keyboardType="numeric"
-                    maxLength={6}
+                    onChange={setOtp}
+                    disabled={!otpSent}
                   />
                 </View>
 

@@ -58,6 +58,10 @@ export const mockUsers: User[] = [
     verified: false,
     memberSince: '2023-09',
     role: 'passenger',
+    emergencyContact: {
+      name: 'Ramesh Naidu',
+      phone: '+91 90000 11111',
+    },
   },
   {
     id: '5',
@@ -70,6 +74,10 @@ export const mockUsers: User[] = [
     verified: true,
     memberSince: '2023-05',
     role: 'passenger',
+    emergencyContact: {
+      name: 'Sita Devi',
+      phone: '+91 90000 22222',
+    },
   },
 ];
 
@@ -189,8 +197,16 @@ export const mockRides: Ride[] = [
     publisherId: '1',
     publisher: mockUsers[0],
     publisherRole: 'driver',
-    from: { city: 'Hyderabad', address: 'Secunderabad Railway Station' },
-    to: { city: 'Vijayawada', address: 'Vijayawada Bus Stand' },
+    from: {
+      city: 'Hyderabad',
+      address: 'Secunderabad Railway Station',
+      coordinates: { lat: 17.4399, lng: 78.4983 },
+    },
+    to: {
+      city: 'Vijayawada',
+      address: 'Vijayawada Bus Stand',
+      coordinates: { lat: 16.5062, lng: 80.6480 },
+    },
     date: getDateString(0),
     time: '05:30 AM',
     price: 450,

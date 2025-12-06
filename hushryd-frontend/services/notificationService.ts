@@ -13,6 +13,15 @@ export interface NotificationData {
   [key: string]: any;
 }
 
+export const generateOTP = (length: number = 6): string => {
+  const digits = '0123456789';
+  let result = '';
+  for (let i = 0; i < length; i += 1) {
+    result += digits.charAt(Math.floor(Math.random() * digits.length));
+  }
+  return result;
+};
+
 export class NotificationService {
   private static instance: NotificationService;
 

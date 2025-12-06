@@ -1,13 +1,28 @@
 import { router } from 'expo-router';
-import React, { useState } from 'react';
+import React, { Suspense, lazy, useCallback, useMemo, useState } from 'react';
 import { Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import AdminLayout from '../../components/admin/AdminLayout';
 import ProtectedRoute from '../../components/admin/ProtectedRoute';
-import NotificationDemo from '../../components/NotificationDemo';
 import { useColorScheme } from '../../components/useColorScheme';
 import Colors from '../../constants/Colors';
 import { BorderRadius, FontSizes, Shadows, Spacing } from '../../constants/Design';
 import { useAuth } from '../../contexts/AuthContext';
+
+const NotificationDemo = lazy(() => import('../../components/NotificationDemo'));
+
+interface DashboardCardItem {
+  title: string;
+  description: string;
+  icon: string;
+  route: string;
+  color: string;
+}
+
+interface StatItem {
+  label: string;
+  value: string;
+  color: string;
+}
 
 export default function AdminDashboardScreen() {
   const { admin, logout } = useAuth();
@@ -15,12 +30,12 @@ export default function AdminDashboardScreen() {
   const colors = Colors[colorScheme ?? 'light'];
   const [showNotificationDemo, setShowNotificationDemo] = useState(false);
 
-  const handleLogout = async () => {
+  const handleLogout = useCallback(async () => {
     await logout();
     router.replace('/(tabs)/' as any);
-  };
+  }, [logout]);
 
-  const dashboardCards = [
+  const dashboardCards = useMemo<DashboardCardItem[]>(() => ([
     {
       title: 'Support Tickets',
       description: 'Manage user support requests',
@@ -91,14 +106,14 @@ export default function AdminDashboardScreen() {
       route: 'demo',
       color: '#8b5cf6',
     },
-  ];
+  ]), []);
 
-  const quickStats = [
+  const quickStats = useMemo<StatItem[]>(() => ([
     { label: 'Open Tickets', value: '24', color: '#f59e0b' },
     { label: 'Pending Payouts', value: '₹45,000', color: '#10b981' },
     { label: 'Verifications', value: '12', color: '#8b5cf6' },
     { label: 'Complaints', value: '8', color: '#ef4444' },
-  ];
+  ]), []);
 
   return (
     <ProtectedRoute pageId="dashboard">
@@ -126,11 +141,13 @@ export default function AdminDashboardScreen() {
             <View style={styles.statsSection}>
               <Text style={[styles.sectionTitle, { color: colors.text }]}>Quick Stats</Text>
               <View style={styles.statsGrid}>
-                {quickStats.map((stat, index) => (
-                  <View key={index} style={[styles.statCard, { backgroundColor: colors.card, borderColor: colors.border }, Shadows.small]}>
-                    <Text style={[styles.statValue, { color: stat.color }]}>{stat.value}</Text>
-                    <Text style={[styles.statLabel, { color: colors.textSecondary }]}>{stat.label}</Text>
-                  </View>
+                {quickStats.map((stat) => (
+                  <StatCard
+                    key={stat.label}
+                    stat={stat}
+                    backgroundColor={colors.card}
+                    borderColor={colors.border}
+                  />
                 ))}
               </View>
             </View>
@@ -139,10 +156,12 @@ export default function AdminDashboardScreen() {
             <View style={styles.cardsSection}>
               <Text style={[styles.sectionTitle, { color: colors.text }]}>Quick Actions</Text>
               <View style={styles.cardsGrid}>
-                {dashboardCards.map((card, index) => (
-                  <TouchableOpacity
-                    key={index}
-                    style={[styles.dashboardCard, { backgroundColor: colors.card, borderColor: colors.border }, Shadows.small]}
+                {dashboardCards.map((card) => (
+                  <DashboardCard
+                    key={card.title}
+                    card={card}
+                    cardBackground={colors.card}
+                    borderColor={colors.border}
                     onPress={() => {
                       if (card.route === 'demo') {
                         setShowNotificationDemo(true);
@@ -150,13 +169,7 @@ export default function AdminDashboardScreen() {
                         router.push(card.route as any);
                       }
                     }}
-                  >
-                    <View style={[styles.cardIcon, { backgroundColor: card.color + '20' }]}>
-                      <Text style={styles.cardIconText}>{card.icon}</Text>
-                    </View>
-                    <Text style={[styles.cardTitle, { color: colors.text }]}>{card.title}</Text>
-                    <Text style={[styles.cardDescription, { color: colors.textSecondary }]}>{card.description}</Text>
-                  </TouchableOpacity>
+                  />
                 ))}
               </View>
             </View>
@@ -178,8 +191,11 @@ export default function AdminDashboardScreen() {
           visible={showNotificationDemo}
           animationType="slide"
           presentationStyle="pageSheet"
+          onRequestClose={() => setShowNotificationDemo(false)}
         >
-          <NotificationDemo />
+          <Suspense fallback={<View style={styles.modalFallback}><Text>Loading demo…</Text></View>}>
+            <NotificationDemo />
+          </Suspense>
           <TouchableOpacity
             style={[styles.closeModalButton, { backgroundColor: colors.primary }]}
             onPress={() => setShowNotificationDemo(false)}
@@ -240,23 +256,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: Spacing.medium,
-  },
-  statCard: {
-    flex: 1,
-    minWidth: '45%',
-    padding: Spacing.medium,
-    borderRadius: BorderRadius.medium,
-    borderWidth: 1,
-    alignItems: 'center',
-  },
-  statValue: {
-    fontSize: FontSizes.xl,
-    fontWeight: 'bold',
-    marginBottom: Spacing.tiny,
-  },
-  statLabel: {
-    fontSize: FontSizes.small,
-    textAlign: 'center',
   },
   cardsSection: {
     marginBottom: Spacing.xl,
@@ -324,4 +323,66 @@ const styles = StyleSheet.create({
     fontSize: FontSizes.medium,
     fontWeight: 'bold',
   },
+  modalFallback: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
 });
+
+interface StatCardProps {
+  stat: StatItem;
+  backgroundColor: string;
+  borderColor: string;
+}
+
+const StatCard = React.memo(({ stat, backgroundColor, borderColor }: StatCardProps) => (
+  <View style={[styles.statCardBase, { backgroundColor, borderColor }, Shadows.small]}>
+    <Text style={[styles.statValueBase, { color: stat.color }]}>{stat.value}</Text>
+    <Text style={[styles.statLabelBase]}>{stat.label}</Text>
+  </View>
+));
+
+interface DashboardCardProps {
+  card: DashboardCardItem;
+  cardBackground: string;
+  borderColor: string;
+  onPress: () => void;
+}
+
+const DashboardCard = React.memo(({ card, cardBackground, borderColor, onPress }: DashboardCardProps) => (
+  <TouchableOpacity
+    style={[styles.dashboardCard, { backgroundColor: cardBackground, borderColor }, Shadows.small]}
+    onPress={onPress}
+    activeOpacity={0.85}
+  >
+    <View style={[styles.cardIcon, { backgroundColor: card.color + '20' }] }>
+      <Text style={styles.cardIconText}>{card.icon}</Text>
+    </View>
+    <Text style={styles.cardTitle}>{card.title}</Text>
+    <Text style={styles.cardDescription}>{card.description}</Text>
+  </TouchableOpacity>
+));
+
+const stylesWithMemoExtensions = StyleSheet.create({
+  statCardBase: {
+    flex: 1,
+    minWidth: '45%',
+    padding: Spacing.medium,
+    borderRadius: BorderRadius.medium,
+    borderWidth: 1,
+    alignItems: 'center',
+  },
+  statValueBase: {
+    fontSize: FontSizes.xl,
+    fontWeight: 'bold',
+    marginBottom: Spacing.tiny,
+  },
+  statLabelBase: {
+    fontSize: FontSizes.small,
+    textAlign: 'center',
+    color: Colors.light.textSecondary,
+  },
+});
+
+Object.assign(styles, stylesWithMemoExtensions);

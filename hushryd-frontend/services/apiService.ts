@@ -182,8 +182,8 @@ export class ApiService {
   }
 
   // OTP-based Login
-  public async sendOTP(mobileNumber: string): Promise<ApiResponse> {
-    return this.apiCall('/auth/send-otp', 'POST', { mobileNumber });
+  public async sendOTP(mobileNumber: string, otp?: string): Promise<ApiResponse> {
+    return this.apiCall('/auth/send-otp', 'POST', { mobileNumber, otp });
   }
 
   public async verifyOTP(mobileNumber: string, otp: string): Promise<ApiResponse> {

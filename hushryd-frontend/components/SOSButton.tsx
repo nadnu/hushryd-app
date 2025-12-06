@@ -1,28 +1,49 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
-import React, { useState } from 'react';
-import { Alert, Linking, StyleSheet, Text, TouchableOpacity, Vibration, View } from 'react-native';
+import React, { useMemo, useState } from 'react';
+import { Alert, StyleSheet, Text, TouchableOpacity, Vibration, View } from 'react-native';
 import Colors from '../constants/Colors';
 import { BorderRadius, FontSizes, Shadows, Spacing } from '../constants/Design';
 import { useColorScheme } from './useColorScheme';
+import { useRide } from '@/contexts/RideContext';
 
 interface SOSButtonProps {
   onPress?: () => void;
   variant?: 'floating' | 'inline' | 'compact';
   disabled?: boolean;
+  requireActiveRide?: boolean;
 }
 
 export default function SOSButton({ 
   onPress, 
   variant = 'floating',
-  disabled = false 
+  disabled = false,
+  requireActiveRide = true,
 }: SOSButtonProps) {
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
+  const { activeRide, triggerEmergencyAlert } = useRide();
   const [isPressed, setIsPressed] = useState(false);
 
+  const rideGuardActive = useMemo(() => {
+    if (!requireActiveRide) {
+      return true;
+    }
+    return !!activeRide;
+  }, [requireActiveRide, activeRide]);
+
+  const isButtonDisabled = disabled || !rideGuardActive;
+
   const handlePress = () => {
-    if (disabled) return;
+    if (isButtonDisabled) {
+      if (!activeRide && requireActiveRide) {
+        Alert.alert(
+          'SOS Unavailable',
+          'Start your ride to enable the SOS button and share your live location.',
+        );
+      }
+      return;
+    }
     
     // Haptic feedback
     Vibration.vibrate(100);
@@ -41,19 +62,15 @@ export default function SOSButton({
           style: 'destructive',
           onPress: async () => {
             try {
-              // Call emergency number (108 is India's emergency number)
-              await Linking.openURL('tel:108');
-              
-              // Also navigate to SOS screen if custom handler exists
+              await triggerEmergencyAlert();
               if (onPress) {
                 onPress();
               } else {
-                // Navigate to SOS screen
                 router.push('/sos');
               }
             } catch (error) {
               console.error('Error calling emergency:', error);
-              Alert.alert('Error', 'Could not make emergency call. Please dial 108 manually.');
+              Alert.alert('Error', 'Could not make emergency call. Please dial your local emergency number manually.');
             }
           },
         },
@@ -96,12 +113,12 @@ export default function SOSButton({
 
   return (
     <TouchableOpacity
-      style={[getButtonStyle(), disabled && styles.disabledButton]}
+      style={[getButtonStyle(), isButtonDisabled && styles.disabledButton]}
       onPress={handlePress}
       onPressIn={handlePressIn}
       onPressOut={handlePressOut}
       activeOpacity={0.8}
-      disabled={disabled}
+      disabled={isButtonDisabled}
     >
       <LinearGradient
         colors={isPressed ? ['#DC2626', '#B91C1C', '#991B1B'] : ['#EF4444', '#DC2626', '#B91C1C']}
@@ -115,7 +132,7 @@ export default function SOSButton({
         </View>
         
         {/* Pulsing animation effect */}
-        {!disabled && (
+        {!isButtonDisabled && (
           <View style={styles.pulseRing} />
         )}
       </LinearGradient>

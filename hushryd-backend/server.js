@@ -18,6 +18,7 @@ const dashboardRoutes = require('./routes/dashboard');
 const databaseRoutes = require('./routes/database');
 const smsGatewayRoutes = require('./routes/smsGateway');
 const offersRoutes = require('./routes/offers');
+const sessionsRoutes = require('./routes/sessions');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -78,6 +79,7 @@ app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/database', databaseRoutes);
 app.use('/api/sms-gateway', smsGatewayRoutes);
 app.use('/api/offers', offersRoutes);
+app.use('/api/sessions', sessionsRoutes);
 
 // Root endpoint
 app.get('/', (req, res) => {

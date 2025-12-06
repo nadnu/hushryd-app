@@ -153,6 +153,7 @@ export default function SOSScreen() {
           onPress={handleSOSAlert}
           variant="floating"
           disabled={isEmergencyActive}
+          requireActiveRide={false}
         />
         <Text style={[styles.sosButtonLabel, { color: colors.text }]}>
           Tap for Emergency

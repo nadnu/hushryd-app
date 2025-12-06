@@ -1,5 +1,5 @@
 import { router } from 'expo-router';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import Colors, { CURRENCY_SYMBOL } from '../constants/Colors';
 import { BorderRadius, FontSizes, Shadows, Spacing } from '../constants/Design';
@@ -8,6 +8,8 @@ import { useColorScheme } from './useColorScheme';
 import RatingModal from './RatingModal';
 import { apiService } from '../services/apiService';
 import { useAuth } from '../contexts/AuthContext';
+import { useRide } from '@/contexts/RideContext';
+import Button from './Button';
 
 interface RideCardProps {
   ride: Ride;
@@ -19,6 +21,7 @@ export default function RideCard({ ride, isPassenger = false, onRatingSubmitted 
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
   const { user } = useAuth();
+  const { activeRide, startRide, endRide } = useRide();
   const [showRatingModal, setShowRatingModal] = useState(false);
   const [hasRated, setHasRated] = useState(false);
   const [isCheckingRating, setIsCheckingRating] = useState(false);
@@ -61,6 +64,35 @@ export default function RideCard({ ride, isPassenger = false, onRatingSubmitted 
   // Determine target type (driver or owner)
   const targetType = ride.publisherRole === 'driver' ? 'driver' : 'owner';
   const targetName = ride.publisher.name;
+
+  const isActiveRide = useMemo(() => activeRide?.id === ride.id, [activeRide, ride.id]);
+
+  const handleStartRide = () => {
+    if (ride.status === 'completed' || ride.status === 'cancelled') {
+      Alert.alert('Ride Unavailable', 'Only upcoming rides can be started.');
+      return;
+    }
+    if (activeRide && activeRide.id !== ride.id) {
+      Alert.alert('Ride Already In Progress', 'Please end your current ride before starting a new one.');
+      return;
+    }
+    startRide(ride);
+    Alert.alert('Ride Started', 'Live safety tracking and SOS are now active for this journey.');
+  };
+
+  const handleEndRide = () => {
+    Alert.alert('End Ride?', 'This will mark your current ride as completed and disable SOS tracking.', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'End Ride',
+        style: 'destructive',
+        onPress: () => {
+          endRide();
+          Alert.alert('Ride Ended', 'Glad you arrived safely!');
+        },
+      },
+    ]);
+  };
 
   const handleRatingSubmit = async (rating: number, feedback?: string) => {
     try {
@@ -110,6 +142,16 @@ export default function RideCard({ ride, isPassenger = false, onRatingSubmitted 
           <Text style={[styles.date, { color: colors.textSecondary }]}>{ride.date}</Text>
         </View>
         <View style={styles.headerBadges}>
+          {isActiveRide && (
+            <View
+              style={[
+                styles.activeBadge,
+                { borderColor: colors.primary, backgroundColor: colors.primary + '20' },
+              ]}
+            >
+              <Text style={[styles.activeBadgeText, { color: colors.primary }]}>IN PROGRESS</Text>
+            </View>
+          )}
           {/* Large Vehicle Indicator */}
           {ride.seats >= 7 && (
             <View style={[styles.largeVehicleBadge, { backgroundColor: colors.primary }]}>
@@ -178,6 +220,27 @@ export default function RideCard({ ride, isPassenger = false, onRatingSubmitted 
               <Text style={styles.rateButtonText}>Rate Now</Text>
             </TouchableOpacity>
           </View>
+        </View>
+      )}
+
+      {isPassenger && (
+        <View style={styles.rideActions}>
+          {isActiveRide ? (
+            <Button
+              title="End Ride"
+              onPress={handleEndRide}
+              variant="secondary"
+              size="small"
+            />
+          ) : (
+            <Button
+              title="Start Ride"
+              onPress={handleStartRide}
+              variant="primary"
+              size="small"
+              disabled={ride.status !== 'upcoming'}
+            />
+          )}
         </View>
       )}
 
@@ -269,9 +332,26 @@ const styles = StyleSheet.create({
   badgeText: {
     fontSize: FontSizes.lg,
   },
+  activeBadge: {
+    borderWidth: 1,
+    borderRadius: BorderRadius.sm,
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: Spacing.xs / 2,
+  },
+  activeBadgeText: {
+    fontSize: FontSizes.xs,
+    fontWeight: '700',
+    letterSpacing: 0.5,
+  },
   divider: {
     height: 1,
     marginVertical: Spacing.md,
+  },
+  rideActions: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: Spacing.sm,
+    marginTop: Spacing.sm,
   },
   routeContainer: {
     flexDirection: 'row',

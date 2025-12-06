@@ -1,7 +1,7 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
-import React from 'react';
-import { Alert, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import React, { useCallback, useEffect, useMemo, useRef } from 'react';
+import { Alert, Animated, Image, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import Colors from '../constants/Colors';
 import { BorderRadius, FontSizes, Shadows, Spacing } from '../constants/Design';
 import { useAuth } from '../contexts/AuthContext';
@@ -24,8 +24,35 @@ interface MenuItem {
 export default function SideMenu({ isVisible, onClose }: SideMenuProps) {
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
-  const { logout } = useAuth();
+  const { logout, user, admin } = useAuth();
   const isWeb = Platform.OS === 'web';
+  const slideAnim = useRef(new Animated.Value(-SIDE_MENU_WIDTH)).current;
+
+  const profileInfo = useMemo(() => {
+    const person = user || admin;
+    if (!person) {
+      return {
+        name: 'Guest User',
+        initials: 'GU',
+        role: 'GUEST',
+        avatar: null as null | { uri: string },
+      };
+    }
+
+    const name = [person.firstName, person.lastName].filter(Boolean).join(' ').trim() || (person as any).name || 'User';
+    const firstInitial = (person.firstName?.charAt(0) ?? '').toUpperCase();
+    const lastInitial = (person.lastName?.charAt(0) ?? '').toUpperCase();
+    const initials = `${firstInitial}${lastInitial}`.trim() || name.split(' ').map(part => part.charAt(0).toUpperCase()).join('').slice(0, 2) || 'US';
+    const role = (person as any).role ? (person as any).role.toUpperCase() : 'USER';
+    const avatarUrl = (person as any).avatarUrl;
+
+    return {
+      name,
+      initials,
+      role,
+      avatar: avatarUrl ? { uri: avatarUrl } : null,
+    };
+  }, [user, admin]);
 
   const menuItems: MenuItem[] = [
     // Top Section - Main Navigation
@@ -47,8 +74,33 @@ export default function SideMenu({ isVisible, onClose }: SideMenuProps) {
     { id: 'logout', title: 'Logout', icon: '🚪', route: '/logout', slot: 'bottom' },
   ];
 
+  const closeMenu = useCallback(() => {
+    if (isWeb) {
+      onClose();
+    } else {
+      Animated.timing(slideAnim, {
+        toValue: -SIDE_MENU_WIDTH,
+        duration: 250,
+        useNativeDriver: true,
+      }).start(() => onClose());
+    }
+  }, [isWeb, onClose, slideAnim]);
+
+  useEffect(() => {
+    if (!isWeb) {
+      if (isVisible) {
+        slideAnim.setValue(-SIDE_MENU_WIDTH);
+        Animated.timing(slideAnim, {
+          toValue: 0,
+          duration: 280,
+          useNativeDriver: true,
+        }).start();
+      }
+    }
+  }, [isVisible, isWeb, slideAnim]);
+
   const handleMenuItemPress = (route: string, id: string) => {
-    onClose();
+    closeMenu();
     
     // Handle logout specially
     if (id === 'logout') {
@@ -108,16 +160,18 @@ export default function SideMenu({ isVisible, onClose }: SideMenuProps) {
     <Modal
       visible={isVisible}
       transparent={true}
-      animationType="slide"
-      onRequestClose={onClose}
+      animationType={isWeb ? 'slide' : 'none'}
+      onRequestClose={closeMenu}
     >
       <View style={[styles.overlay, !isWeb && styles.overlayMobile]}>
         {!isWeb && (
-          <View style={[styles.sideMenu, { backgroundColor: colors.background }]}>
+          <Animated.View
+            style={[styles.sideMenu, { backgroundColor: colors.background }, { transform: [{ translateX: slideAnim }] }]}
+          >
             {renderMenuContent(colors)}
-          </View>
+          </Animated.View>
         )}
-        <Pressable style={styles.backdrop} onPress={onClose} />
+        <Pressable style={styles.backdrop} onPress={closeMenu} />
         {isWeb && (
           <View style={[styles.sideMenu, { backgroundColor: colors.background }]}>
             {renderMenuContent(colors)}
@@ -138,7 +192,19 @@ export default function SideMenu({ isVisible, onClose }: SideMenuProps) {
           end={{ x: 1, y: 1 }}
         >
           <View style={styles.headerContent}>
-            {/* HushRyd Logo */}
+            <View style={styles.profileRow}>
+              <View style={styles.profileAvatar}>
+                {profileInfo.avatar ? (
+                  <Image source={profileInfo.avatar} style={styles.profileImage} />
+                ) : (
+                  <Text style={styles.profileInitials}>{profileInfo.initials}</Text>
+                )}
+              </View>
+              <View style={styles.profileDetails}>
+                <Text style={styles.profileName}>{profileInfo.name}</Text>
+                <Text style={styles.profileRole}>{profileInfo.role}</Text>
+              </View>
+            </View>
             <View style={styles.logoContainer}>
               <HushRydLogoImage 
                 size="small" 
@@ -197,7 +263,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
   },
   overlayMobile: {
-    flexDirection: 'row-reverse',
+    flexDirection: 'row',
   },
   backdrop: {
     flex: 1,
@@ -215,6 +281,44 @@ const styles = StyleSheet.create({
   },
   headerContent: {
     alignItems: 'center',
+  },
+  profileRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.md,
+    marginBottom: Spacing.lg,
+  },
+  profileAvatar: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    overflow: 'hidden',
+  },
+  profileImage: {
+    width: '100%',
+    height: '100%',
+    resizeMode: 'cover',
+  },
+  profileInitials: {
+    fontSize: FontSizes.large,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  profileDetails: {
+    flex: 1,
+  },
+  profileName: {
+    fontSize: FontSizes.medium,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  profileRole: {
+    fontSize: FontSizes.small,
+    color: 'rgba(255,255,255,0.8)',
+    letterSpacing: 0.6,
   },
   logoContainer: {
     marginBottom: Spacing.sm,
@@ -303,3 +407,5 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
 });
+
+const SIDE_MENU_WIDTH = 320;

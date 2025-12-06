@@ -1,6 +1,6 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
-import { router } from 'expo-router';
+import { router, usePathname } from 'expo-router';
 import React, { useEffect, useRef } from 'react';
 import { Animated, Dimensions, Easing, StatusBar, StyleSheet, Text, View } from 'react-native';
 import HushRydLogoImage from '../components/HushRydLogoImage';
@@ -11,6 +11,7 @@ import { useColorScheme } from '../components/useColorScheme';
 const { width, height } = Dimensions.get('window');
 
 export default function SplashScreen() {
+  const pathname = usePathname();
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -75,11 +76,13 @@ export default function SplashScreen() {
     ]).start();
 
     const timer = setTimeout(() => {
-      router.replace('/(tabs)/');
-    }, 3400);
+      if (pathname === '/splash') {
+        router.replace('/(tabs)/');
+      }
+    }, 3400); // Total animation time
 
     return () => clearTimeout(timer);
-  }, []);
+  }, [pathname]);
 
   const roadTranslate = roadAnim.interpolate({
     inputRange: [0, 1],

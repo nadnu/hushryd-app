@@ -8,7 +8,21 @@ import {
     TouchableOpacity,
     View
 } from 'react-native';
-import { GOOGLE_MAPS_API_KEY } from '../config/maps';
+
+// Import Google Maps API key with fallback
+let GOOGLE_MAPS_API_KEY = '';
+try {
+    // Try to import the config file
+    const mapsConfig = require('../config/maps');
+    GOOGLE_MAPS_API_KEY = mapsConfig.GOOGLE_MAPS_API_KEY || '';
+} catch (error: any) {
+    // Config file doesn't exist or has issues, will use mock data
+    // This is expected if config/maps.ts is not created yet
+    if (error.code !== 'MODULE_NOT_FOUND') {
+        console.warn('Google Maps API key not configured. Using mock location data.');
+    }
+}
+
 import Colors from '../constants/Colors';
 import { BorderRadius, FontSizes, Shadows, Spacing } from '../constants/Design';
 import { useColorScheme } from './useColorScheme';
@@ -51,6 +65,16 @@ export default function LocationAutocomplete({
   const fetchPredictions = async (input: string) => {
     if (input.length < 1) {
       setPredictions([]);
+      return;
+    }
+
+    // If API key is not configured or is placeholder, use mock data directly
+    if (!GOOGLE_MAPS_API_KEY || GOOGLE_MAPS_API_KEY === 'YOUR_GOOGLE_MAPS_API_KEY_HERE') {
+      setLoading(true);
+      setTimeout(() => {
+        setPredictions(getMockCities(input));
+        setLoading(false);
+      }, 300); // Simulate network delay
       return;
     }
 

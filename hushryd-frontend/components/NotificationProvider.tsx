@@ -4,7 +4,7 @@ import { NotificationData, notificationService } from '../services/notificationS
 interface NotificationContextType {
   pushToken: string | null;
   isRegistered: boolean;
-  registerForNotifications: () => Promise<void>;
+  registerForNotifications: () => Promise<boolean>;
   sendLocalNotification: (title: string, body: string, data?: NotificationData) => Promise<void>;
   areNotificationsEnabled: () => Promise<boolean>;
 }
@@ -26,11 +26,13 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
         setPushToken(token);
         setIsRegistered(true);
         console.log('Notifications registered successfully');
-      } else {
-        console.log('Failed to register for notifications');
+        return true;
       }
+      console.log('Failed to register for notifications');
+      return false;
     } catch (error) {
       console.error('Error registering for notifications:', error);
+      return false;
     }
   }, []);
 

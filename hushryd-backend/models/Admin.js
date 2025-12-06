@@ -9,8 +9,18 @@ class Admin {
     this.lastName = data.last_name;
     this.password = data.password; // Include password field
     this.role = data.role;
-    this.permissions = data.permissions;
-    this.isActive = data.is_active;
+    // Handle permissions - could be string, array, or null
+    try {
+      if (data.permissions) {
+        this.permissions = typeof data.permissions === 'string' ? JSON.parse(data.permissions) : data.permissions;
+      } else {
+        this.permissions = null;
+      }
+    } catch (error) {
+      console.error('Error parsing permissions in constructor:', error);
+      this.permissions = null;
+    }
+    this.isActive = data.is_active !== undefined ? Boolean(data.is_active) : true;
     this.lastLogin = data.last_login;
     this.createdAt = data.created_at;
     this.updatedAt = data.updated_at;
@@ -161,13 +171,27 @@ class Admin {
 
   // Convert to JSON for authentication (includes sensitive data)
   toAuthJSON() {
+    let permissions = [];
+    try {
+      if (this.permissions) {
+        permissions = typeof this.permissions === 'string' ? JSON.parse(this.permissions) : this.permissions;
+        // Ensure it's an array
+        if (!Array.isArray(permissions)) {
+          permissions = [];
+        }
+      }
+    } catch (error) {
+      console.error('Error parsing permissions:', error);
+      permissions = [];
+    }
+
     return {
       id: this.id,
       email: this.email,
       firstName: this.firstName,
       lastName: this.lastName,
       role: this.role,
-      permissions: this.permissions ? (typeof this.permissions === 'string' ? JSON.parse(this.permissions) : this.permissions) : [],
+      permissions: permissions,
       isActive: this.isActive,
       lastLogin: this.lastLogin,
       createdAt: this.createdAt,

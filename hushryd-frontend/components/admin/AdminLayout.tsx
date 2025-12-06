@@ -1,13 +1,11 @@
 import { router } from 'expo-router';
-import React, { useEffect, useState } from 'react';
-import { Dimensions, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import React, { useEffect, useMemo, useState } from 'react';
+import { Dimensions, Image, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useColorScheme } from '../../components/useColorScheme';
 import Colors from '../../constants/Colors';
 import { BorderRadius, FontSizes, Spacing } from '../../constants/Design';
 import { useAuth } from '../../contexts/AuthContext';
 import { permissionsService } from '../../services/permissionsService';
-
-const { width } = Dimensions.get('window');
 
 interface AdminLayoutProps {
   children: React.ReactNode;
@@ -23,6 +21,40 @@ export default function AdminLayout({ children, title, currentPage = 'dashboard'
   const [sidebarExpanded, setSidebarExpanded] = useState(true);
   const [sidebarHovered, setSidebarHovered] = useState(false);
   const [hoverTimeout, setHoverTimeout] = useState<NodeJS.Timeout | null>(null);
+  const [isMobileLayout, setIsMobileLayout] = useState(false);
+
+  const displayName = useMemo(() => {
+    if (!admin) return 'Admin User';
+    if (admin.name && admin.name.trim()) return admin.name.trim();
+    const combined = [admin.firstName, admin.lastName].filter(Boolean).join(' ').trim();
+    return combined || 'Admin User';
+  }, [admin]);
+
+  const displayInitials = useMemo(() => {
+    if (!admin) return 'AU';
+    const first = admin.firstName?.trim().charAt(0).toUpperCase() ?? '';
+    const last = admin.lastName?.trim().charAt(0).toUpperCase() ?? '';
+    const combined = `${first}${last}`.trim();
+    if (combined.length > 0) return combined;
+    const fallback = displayName
+      .split(' ')
+      .filter(Boolean)
+      .map(part => part.charAt(0).toUpperCase())
+      .join('')
+      .slice(0, 2);
+    return fallback || 'AU';
+  }, [admin, displayName]);
+
+  const avatarSource = useMemo(() => {
+    if (admin?.avatarUrl) {
+      return { uri: admin.avatarUrl };
+    }
+    return null;
+  }, [admin?.avatarUrl]);
+
+  const displayRole = useMemo(() => {
+    return admin?.role ? admin.role.toUpperCase() : 'ADMIN';
+  }, [admin?.role]);
 
   const getMenuItems = () => {
     const allMenuItems = [
@@ -94,7 +126,30 @@ export default function AdminLayout({ children, title, currentPage = 'dashboard'
     setSidebarHovered(false);
   };
 
-  // Cleanup timeout on unmount
+  // Sync active menu with prop changes (after navigation)
+  useEffect(() => {
+    setActiveMenu(currentPage);
+  }, [currentPage]);
+
+  // Establish responsive layout
+  useEffect(() => {
+    const evaluateLayout = () => {
+      const { width } = Dimensions.get('window');
+      const mobile = Platform.OS !== 'web' && width < 1024;
+      setIsMobileLayout(mobile);
+      setSidebarExpanded(!mobile);
+    };
+
+    evaluateLayout();
+
+    const subscription = Dimensions.addEventListener('change', evaluateLayout);
+
+    return () => {
+      subscription?.remove();
+    };
+  }, []);
+
+  // Cleanup hover timeout on unmount
   useEffect(() => {
     return () => {
       if (hoverTimeout) {
@@ -103,92 +158,117 @@ export default function AdminLayout({ children, title, currentPage = 'dashboard'
     };
   }, [hoverTimeout]);
 
+  // Ensure the mobile sidebar never stays open when we navigate between screens
+  useEffect(() => {
+    if (isMobileLayout) {
+      setSidebarExpanded(false);
+    }
+  }, [isMobileLayout, currentPage]);
+
+  const renderSidebarContent = () => (
+    <ScrollView style={styles.sidebarScrollView} showsVerticalScrollIndicator={false}>
+      <View style={styles.sidebarContent}>
+        <View style={styles.logoSection}>
+          <Image 
+            source={require('../../assets/images/hushryd-logo-black-gradient.png')} 
+            style={[styles.logoImage, { tintColor: '#FFFFFF' }]}
+            resizeMode="contain"
+          />
+          {sidebarExpanded && <Text style={[styles.logoText, { color: colors.text }]}>Admin Dashboard</Text>}
+        </View>
+        
+        <View style={styles.menuSection}>
+          {sidebarExpanded && <Text style={styles.menuTitle}>Main Menu</Text>}
+          {getMenuItems().map((item) => (
+            <TouchableOpacity
+              key={item.id}
+              style={[
+                styles.menuItem,
+                activeMenu === item.id && styles.activeMenuItem,
+                !sidebarExpanded && styles.menuItemCollapsed
+              ]}
+              onPress={() => {
+                console.log('Menu item clicked:', item.id, item.route);
+                if (hoverTimeout) {
+                  clearTimeout(hoverTimeout);
+                  setHoverTimeout(null);
+                }
+                setActiveMenu(item.id);
+                if (!isMobileLayout) {
+                  setSidebarExpanded(true);
+                } else {
+                  setSidebarExpanded(false);
+                }
+                if (item.route) {
+                  console.log('Navigating to:', item.route);
+                  router.push(item.route as any);
+                }
+              }}
+            >
+              <Text style={[
+                styles.menuIcon,
+                activeMenu === item.id && styles.activeMenuIcon,
+                !sidebarExpanded && styles.menuIconCollapsed
+              ]}>
+                {item.icon}
+              </Text>
+              {sidebarExpanded && (
+                <Text style={[
+                  styles.menuText,
+                  activeMenu === item.id && styles.activeMenuText
+                ]}>
+                  {item.title}
+                </Text>
+              )}
+            </TouchableOpacity>
+          ))}
+        </View>
+      </View>
+    </ScrollView>
+  );
+
   return (
     <View style={styles.container}>
-      <View style={styles.content}>
-        {/* Sidebar - Black Background */}
-        <View 
-          style={[
-            styles.sidebar,
-            sidebarExpanded && styles.sidebarExpanded,
-            sidebarHovered && !sidebarExpanded && styles.sidebarHovered
-          ]}
-        >
-          {/* Sidebar Toggle Button */}
-          <TouchableOpacity 
-            style={styles.sidebarToggle}
-            onPress={handleSidebarPress}
-            activeOpacity={0.8}
+      <View style={[styles.content, isMobileLayout && styles.contentMobile]}>
+        {/* Sidebar */}
+        {!isMobileLayout && (
+          <View 
+            style={[
+              styles.sidebar,
+              sidebarExpanded && styles.sidebarExpanded,
+              sidebarHovered && !sidebarExpanded && styles.sidebarHovered
+            ]}
           >
-            <Text style={styles.toggleIcon}>
-              {sidebarExpanded ? '✕' : '☰'}
-            </Text>
-          </TouchableOpacity>
-          
-          <ScrollView style={styles.sidebarScrollView} showsVerticalScrollIndicator={false}>
-            <View style={styles.sidebarContent}>
-              <View style={styles.logoSection}>
-                <Image 
-                  source={require('../../assets/images/hushryd-logo-black-gradient.png')} 
-                  style={[styles.logoImage, { tintColor: '#FFFFFF' }]}
-                  resizeMode="contain"
-                />
-                {sidebarExpanded && <Text style={[styles.logoText, { color: colors.text }]}>Admin Dashboard</Text>}
-              </View>
-              
-              <View style={styles.menuSection}>
-                {sidebarExpanded && <Text style={styles.menuTitle}>Main Menu</Text>}
-                {getMenuItems().map((item) => (
-                  <TouchableOpacity
-                    key={item.id}
-                    style={[
-                      styles.menuItem,
-                      activeMenu === item.id && styles.activeMenuItem,
-                      !sidebarExpanded && styles.menuItemCollapsed
-                    ]}
-                    onPress={() => {
-                      console.log('Menu item clicked:', item.id, item.route);
-                      if (hoverTimeout) {
-                        clearTimeout(hoverTimeout);
-                        setHoverTimeout(null);
-                      }
-                      setActiveMenu(item.id);
-                      setSidebarExpanded(true);
-                      if (item.route) {
-                        console.log('Navigating to:', item.route);
-                        router.push(item.route as any);
-                      }
-                    }}
-                  >
-                    <Text style={[
-                      styles.menuIcon,
-                      activeMenu === item.id && styles.activeMenuIcon,
-                      !sidebarExpanded && styles.menuIconCollapsed
-                    ]}>
-                      {item.icon}
-                    </Text>
-                    {sidebarExpanded && (
-                      <Text style={[
-                        styles.menuText,
-                        activeMenu === item.id && styles.activeMenuText
-                      ]}>
-                        {item.title}
-                      </Text>
-                    )}
-                  </TouchableOpacity>
-                ))}
-              </View>
-            </View>
-          </ScrollView>
-        </View>
+            {!isMobileLayout && (
+              <TouchableOpacity 
+                style={styles.sidebarToggle}
+                onPress={handleSidebarPress}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.toggleIcon}>
+                  {sidebarExpanded ? '✕' : '☰'}
+                </Text>
+              </TouchableOpacity>
+            )}
+            {renderSidebarContent()}
+          </View>
+        )}
 
-        {/* Main Content Area - White Background */}
+        {/* Main Content Area */}
         <View style={styles.mainContentArea}>
           {/* Header - Beside Sidebar */}
           <View style={styles.header}>
             <View style={styles.headerContent}>
               <View style={styles.headerLeft}>
-                <Text style={styles.greeting}>{getGreeting()}, James!</Text>
+                {isMobileLayout && (
+                  <TouchableOpacity
+                    style={styles.mobileMenuButton}
+                    onPress={() => setSidebarExpanded(true)}
+                  >
+                    <Text style={styles.mobileMenuIcon}>☰</Text>
+                  </TouchableOpacity>
+                )}
+                <Text style={styles.greeting}>{getGreeting()}, {admin?.firstName ?? 'Admin'}!</Text>
                 <Text style={styles.pageTitle}>{title}</Text>
               </View>
               <View style={styles.headerRight}>
@@ -200,11 +280,17 @@ export default function AdminLayout({ children, title, currentPage = 'dashboard'
                 </TouchableOpacity>
                 <View style={styles.profileSection}>
                   <View style={styles.profileAvatar}>
-                    <Text style={styles.profileInitial}>W</Text>
+                    {avatarSource ? (
+                      <Image source={avatarSource} style={styles.profileAvatarImage} />
+                    ) : (
+                      <Text style={styles.profileInitial}>{displayInitials}</Text>
+                    )}
                   </View>
                   <View style={styles.profileInfo}>
-                    <Text style={styles.profileName}>William Martin</Text>
-                    <Text style={styles.profileRole}>Front End Developer</Text>
+                    <Text style={styles.profileName}>{displayName}</Text>
+                    <View style={styles.roleBadgeCompact}>
+                      <Text style={styles.roleBadgeTextCompact}>{displayRole}</Text>
+                    </View>
                   </View>
                 </View>
               </View>
@@ -217,6 +303,27 @@ export default function AdminLayout({ children, title, currentPage = 'dashboard'
           </ScrollView>
         </View>
       </View>
+
+      {/* Mobile Sidebar Overlay */}
+      {isMobileLayout && sidebarExpanded && (
+        <View style={styles.mobileSidebarOverlay} pointerEvents={sidebarExpanded ? 'auto' : 'none'}>
+          <TouchableOpacity
+            style={styles.mobileBackdrop}
+            activeOpacity={1}
+            onPress={() => setSidebarExpanded(false)}
+          />
+          <View style={[styles.sidebar, styles.sidebarExpanded, styles.sidebarMobile]}>
+            <TouchableOpacity 
+              style={styles.sidebarToggle}
+              onPress={() => setSidebarExpanded(false)}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.toggleIcon}>✕</Text>
+            </TouchableOpacity>
+            {renderSidebarContent()}
+          </View>
+        </View>
+      )}
     </View>
   );
 }
@@ -229,6 +336,9 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     flexDirection: 'row',
+  },
+  contentMobile: {
+    flexDirection: 'column',
   },
   mainContentArea: {
     flex: 1,
@@ -264,6 +374,17 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.2,
     shadowRadius: 4,
     elevation: 4,
+  },
+  mobileMenuButton: {
+    alignSelf: 'flex-start',
+    padding: Spacing.sm,
+    borderRadius: BorderRadius.small,
+    backgroundColor: '#F3F4F6',
+    marginBottom: Spacing.sm,
+  },
+  mobileMenuIcon: {
+    fontSize: 20,
+    color: '#111827',
   },
   toggleIcon: {
     fontSize: 16,
@@ -417,37 +538,74 @@ const styles = StyleSheet.create({
   profileSection: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: Spacing.md,
   },
   profileAvatar: {
     width: 40,
     height: 40,
     borderRadius: 20,
     backgroundColor: '#3B82F6',
-    justifyContent: 'center',
     alignItems: 'center',
-    marginRight: Spacing.sm,
+    justifyContent: 'center',
+    overflow: 'hidden',
+  },
+  profileAvatarImage: {
+    width: '100%',
+    height: '100%',
+    resizeMode: 'cover',
   },
   profileInitial: {
-    fontSize: FontSizes.md,
-    fontWeight: 'bold',
     color: '#FFFFFF',
+    fontSize: FontSizes.lg,
+    fontWeight: '700',
   },
   profileInfo: {
-    alignItems: 'flex-start',
+    justifyContent: 'center',
   },
   profileName: {
     fontSize: FontSizes.md,
-    fontWeight: '600',
+    fontWeight: '700',
     color: '#111827',
   },
-  profileRole: {
-    fontSize: FontSizes.sm,
-    color: '#6B7280',
+  roleBadgeCompact: {
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: 2,
+    borderRadius: BorderRadius.small,
+    backgroundColor: '#EEF2FF',
+    marginTop: Spacing.tiny,
+    alignSelf: 'flex-start',
+  },
+  roleBadgeTextCompact: {
+    fontSize: FontSizes.tiny,
+    color: '#3B82F6',
+    fontWeight: '700',
+    letterSpacing: 0.6,
   },
   pageContent: {
     flex: 1,
     backgroundColor: '#FFFFFF',
     paddingHorizontal: Spacing.lg,
     paddingTop: Spacing.lg,
+  },
+  mobileSidebarOverlay: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
+    flexDirection: 'row',
+    zIndex: 200,
+  },
+  mobileBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+  },
+  sidebarMobile: {
+    position: 'absolute',
+    top: 0,
+    bottom: 0,
+    left: 0,
+    width: 280,
+    zIndex: 201,
   },
 });

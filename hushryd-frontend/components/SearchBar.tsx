@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { Modal, Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Image as RNImage, Modal, Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import Images from '../assets/images';
 import Colors from '../constants/Colors';
 import { BorderRadius, FontSizes, Shadows, Spacing } from '../constants/Design';
 import { SearchParams } from '../types/models';
@@ -10,6 +11,17 @@ import TimeSlotDropdown from './TimeSlotDropdown';
 import { useColorScheme } from './useColorScheme';
 
 const IS_WEB = Platform.OS === 'web';
+
+const TIMESLOT_OPTIONS = [
+  { key: 'any', label: 'Any', icon: '🕐' },
+  { key: 'early-morning', label: '4-7AM', icon: '🌄' },
+  { key: 'morning', label: '7-10AM', icon: '🌅' },
+  { key: 'late-morning', label: '10-1PM', icon: '☀️' },
+  { key: 'afternoon', label: '1-4PM', icon: '🌞' },
+  { key: 'evening', label: '4-7PM', icon: '🌆' },
+  { key: 'late-evening', label: '7-10PM', icon: '🌇' },
+  { key: 'night', label: '10-1AM', icon: '🌙' },
+] as const;
 
 interface SearchBarProps {
   onSearch: (params: SearchParams) => void;
@@ -25,17 +37,14 @@ export default function SearchBar({ onSearch, initialValues, compact = false }: 
   const [to, setTo] = useState(initialValues?.to || '');
   const [date, setDate] = useState(initialValues?.date || getTodayDate());
   const [passengers, setPassengers] = useState(initialValues?.passengers || 1);
-  const [timeslot, setTimeslot] = useState<'any' | 'early-morning' | 'morning' | 'late-morning' | 'afternoon' | 'evening' | 'late-evening' | 'night'>(initialValues?.timeslot || 'any');
+  const [timeslot, setTimeslot] = useState<(typeof TIMESLOT_OPTIONS)[number]['key']>(initialValues?.timeslot || 'any');
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showTimeSlotDropdown, setShowTimeSlotDropdown] = useState(false);
   const [selectedDate, setSelectedDate] = useState(new Date(initialValues?.date || getTodayDate()));
 
   const handleSearch = () => {
-    console.log('SearchBar handleSearch called with:', { from, to, date, passengers, timeslot });
     if (from && to && date) {
       onSearch({ from, to, date, passengers, timeslot });
-    } else {
-      console.log('Search validation failed - missing required fields');
     }
   };
 
@@ -46,12 +55,11 @@ export default function SearchBar({ onSearch, initialValues, compact = false }: 
   };
 
   const handleTimeslotSelect = (selectedTimeslot: string) => {
-    setTimeslot(selectedTimeslot as any);
+    setTimeslot(selectedTimeslot as (typeof TIMESLOT_OPTIONS)[number]['key']);
     setShowTimeSlotDropdown(false);
   };
 
   const handleReset = () => {
-    console.log('Resetting search criteria');
     setFrom(initialValues?.from || '');
     setTo('');
     setDate(getTodayDate());
@@ -62,60 +70,57 @@ export default function SearchBar({ onSearch, initialValues, compact = false }: 
   };
 
   const handleDatePress = () => {
-    setShowTimeSlotDropdown(false); // Hide timeslot dropdown when selecting date
+    setShowTimeSlotDropdown(false);
     setShowDatePicker(true);
   };
 
-  const handleDateChange = (event: any, selectedDate?: Date) => {
-    const currentDate = selectedDate || new Date();
+  const handleDateChange = (event: any, pickedDate?: Date) => {
+    const currentDate = pickedDate || new Date();
     setShowDatePicker(Platform.OS === 'ios');
     setSelectedDate(currentDate);
     setDate(currentDate.toISOString().split('T')[0]);
   };
 
-  const formatDateDisplay = (dateString: string) => {
-    const date = new Date(dateString);
+  const formatDateDisplay = (value: string) => {
+    const inputDate = new Date(value);
     const today = new Date();
     const yesterday = new Date(today);
-    yesterday.setDate(yesterday.getDate() - 1);
     const tomorrow = new Date(today);
+
+    yesterday.setDate(yesterday.getDate() - 1);
     tomorrow.setDate(tomorrow.getDate() + 1);
 
-    if (date.toDateString() === today.toDateString()) {
-      return 'Today';
-    } else if (date.toDateString() === yesterday.toDateString()) {
-      return 'Yesterday';
-    } else if (date.toDateString() === tomorrow.toDateString()) {
-      return 'Tomorrow';
-    } else {
-      return date.toLocaleDateString('en-US', { 
-        month: 'short', 
-        day: 'numeric',
-        year: date.getFullYear() !== today.getFullYear() ? 'numeric' : undefined
-      });
-    }
+    if (inputDate.toDateString() === today.toDateString()) return 'Today';
+    if (inputDate.toDateString() === yesterday.toDateString()) return 'Yesterday';
+    if (inputDate.toDateString() === tomorrow.toDateString()) return 'Tomorrow';
+
+    return inputDate.toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: inputDate.getFullYear() !== today.getFullYear() ? 'numeric' : undefined,
+    });
   };
 
-  return (
-    <View style={[styles.container, compact && styles.compactContainer]}>
-      <View style={[styles.searchCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-        {/* Background Image */}
-        <RNImage 
-          source={Images.searchBanner} 
-          style={styles.backgroundImage}
-          resizeMode="cover"
-          onError={() => {
-            console.log('Search bar background image failed to load');
-          }}
-        />
-        
-        {/* Content Overlay */}
-        <View style={styles.contentOverlay}>
-        {/* Main Search Row */}
+  useEffect(() => {
+    if (initialValues?.date) {
+      setDate(initialValues.date);
+      setSelectedDate(new Date(initialValues.date));
+    }
+  }, [initialValues?.date]);
+
+  const renderWebLayout = () => (
+    <View style={styles.webCard}>
+      <RNImage
+        source={Images.searchBanner}
+        style={styles.backgroundImage}
+        resizeMode="cover"
+        onError={() => {
+          console.log('Search bar background image failed to load');
+        }}
+      />
+      <View style={styles.contentOverlay}>
         <View style={styles.mainRow}>
-          {/* First Row: From, To, Date, Passengers */}
           <View style={styles.firstRow}>
-            {/* From Location */}
             <View style={styles.inputWrapper}>
               <LocationAutocomplete
                 placeholder="From"
@@ -125,47 +130,37 @@ export default function SearchBar({ onSearch, initialValues, compact = false }: 
               />
             </View>
 
-            {/* Swap Button */}
-            {IS_WEB && (
-              <TouchableOpacity 
-                style={[styles.swapButton, { backgroundColor: colors.primary }]} 
-                onPress={swapLocations}
-              >
-                <Text style={styles.swapIcon}>⇅</Text>
-              </TouchableOpacity>
-            )}
+            <TouchableOpacity
+              style={[styles.swapButton, { backgroundColor: colors.primary }]}
+              onPress={swapLocations}
+            >
+              <Text style={styles.swapIcon}>⇅</Text>
+            </TouchableOpacity>
 
-            {/* To Location */}
             <View style={styles.inputWrapper}>
               <LocationAutocomplete
                 placeholder="To"
                 value={to}
                 onLocationSelect={setTo}
-                icon={IS_WEB ? <Text style={styles.inputIcon}>🎯</Text> : undefined}
+                icon={<Text style={styles.inputIcon}>🎯</Text>}
               />
             </View>
 
-            {/* Date Input */}
             <View style={styles.dateWrapper}>
               <TouchableOpacity
                 style={[styles.dateInput, { backgroundColor: colors.lightGray, borderColor: colors.border }]}
                 onPress={handleDatePress}
               >
                 <Text style={styles.inputIcon}>📅</Text>
-                <Text style={[styles.dateText, { color: colors.text }]}>
-                  {formatDateDisplay(date)}
-                </Text>
-                {date && (
-                  <TouchableOpacity
-                    style={styles.timeSlotTrigger}
-                    onPress={() => setShowTimeSlotDropdown(!showTimeSlotDropdown)}
-                  >
-                    <Text style={styles.timeSlotIcon}>⏰</Text>
-                  </TouchableOpacity>
-                )}
+                <Text style={[styles.dateText, { color: colors.text }]}>{formatDateDisplay(date)}</Text>
+                <TouchableOpacity
+                  style={styles.timeSlotTrigger}
+                  onPress={() => setShowTimeSlotDropdown(!showTimeSlotDropdown)}
+                >
+                  <Text style={styles.timeSlotIcon}>⏰</Text>
+                </TouchableOpacity>
               </TouchableOpacity>
-              
-              {/* Time Slot Dropdown */}
+
               <TimeSlotDropdown
                 selectedTimeslot={timeslot}
                 onTimeslotSelect={handleTimeslotSelect}
@@ -173,7 +168,6 @@ export default function SearchBar({ onSearch, initialValues, compact = false }: 
               />
             </View>
 
-            {/* Passengers Input */}
             <View style={styles.passengerWrapper}>
               <View
                 style={[
@@ -200,73 +194,163 @@ export default function SearchBar({ onSearch, initialValues, compact = false }: 
             </View>
           </View>
 
-        {/* Second Row: Timeslots and Buttons */}
-        <View style={styles.secondRow}>
-          {/* Timeslot Selector */}
-          <View style={styles.timeslotContainer}>
-            <Text style={[styles.timeslotLabel, { color: colors.textSecondary }]}>Time</Text>
-            <View style={styles.timeslotButtons}>
-              {([
-                { key: 'any', label: 'Any', icon: '🕐' },
-                { key: 'early-morning', label: '4-7AM', icon: '🌄' },
-                { key: 'morning', label: '7-10AM', icon: '🌅' },
-                { key: 'late-morning', label: '10-1PM', icon: '☀️' },
-                { key: 'afternoon', label: '1-4PM', icon: '🌞' },
-                { key: 'evening', label: '4-7PM', icon: '🌆' },
-                { key: 'late-evening', label: '7-10PM', icon: '🌇' },
-                { key: 'night', label: '10-1AM', icon: '🌙' },
-              ] as const).map((slot) => (
-                <TouchableOpacity
-                  key={slot.key}
-                  style={[
-                    styles.timeslotButton,
-                    { backgroundColor: colors.lightGray, borderColor: colors.border },
-                    timeslot === slot.key && [
-                      styles.timeslotButtonActive,
-                      { backgroundColor: colors.primary, borderColor: colors.primary },
-                    ],
-                  ]}
-                  onPress={() => setTimeslot(slot.key)}
-                  activeOpacity={0.7}
-                >
-                  <Text style={styles.timeslotIcon}>{slot.icon}</Text>
-                  <Text
+          <View style={styles.secondRow}>
+            <View style={styles.timeslotContainer}>
+              <Text style={[styles.timeslotLabel, { color: colors.textSecondary }]}>Time</Text>
+              <View style={styles.timeslotButtons}>
+                {TIMESLOT_OPTIONS.map((slot) => (
+                  <TouchableOpacity
+                    key={slot.key}
                     style={[
-                      styles.timeslotText,
-                      { color: colors.text },
-                      timeslot === slot.key && { color: '#FFFFFF' },
+                      styles.timeslotButton,
+                      { backgroundColor: colors.lightGray, borderColor: colors.border },
+                      timeslot === slot.key && [
+                        styles.timeslotButtonActive,
+                        { backgroundColor: colors.primary, borderColor: colors.primary },
+                      ],
                     ]}
+                    onPress={() => setTimeslot(slot.key)}
+                    activeOpacity={0.7}
                   >
-                    {slot.label}
-                  </Text>
-                </TouchableOpacity>
-              ))}
+                    <Text style={styles.timeslotIcon}>{slot.icon}</Text>
+                    <Text
+                      style={[
+                        styles.timeslotText,
+                        { color: colors.text },
+                        timeslot === slot.key && { color: '#FFFFFF' },
+                      ]}
+                    >
+                      {slot.label}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
             </View>
-          </View>
 
-          {/* Reset Button */}
-          <Button 
-            title="Reset" 
-            onPress={handleReset} 
-            variant="outline"
-            size="medium"
-            style={styles.resetButton}
-          />
-          
-          {/* Search Button */}
-          <Button 
-            title="Search" 
-            onPress={handleSearch} 
-            variant="outline"
-            size="medium"
-            style={styles.searchButton}
-          />
+            <Button
+              title="Reset"
+              onPress={handleReset}
+              variant="outline"
+              size="medium"
+              style={styles.resetButton}
+            />
+
+            <Button
+              title="Search"
+              onPress={handleSearch}
+              variant="outline"
+              size="medium"
+              style={styles.searchButton}
+            />
+          </View>
         </View>
-        </View>
+      </View>
+    </View>
+  );
+
+  const renderMobileLayout = () => (
+    <View style={styles.mobileLayout}>
+      <Text style={[styles.mobileTitle, { color: colors.text }]}>Plan your ride</Text>
+
+      <View style={styles.mobileFieldGroup}>
+        <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>From</Text>
+        <LocationAutocomplete
+          placeholder="Leaving from"
+          value={from}
+          onLocationSelect={setFrom}
+        />
+      </View>
+
+      <View style={styles.mobileFieldGroup}>
+        <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>To</Text>
+        <LocationAutocomplete
+          placeholder="Going to"
+          value={to}
+          onLocationSelect={setTo}
+        />
+      </View>
+
+      <TouchableOpacity
+        style={[styles.mobileDateInput, { backgroundColor: colors.lightGray, borderColor: colors.border }]}
+        onPress={handleDatePress}
+      >
+        <Text style={styles.inputIcon}>📅</Text>
+        <Text style={[styles.dateText, { color: colors.text }]}>{formatDateDisplay(date)}</Text>
+      </TouchableOpacity>
+
+      <View style={styles.mobileTimeslotSection}>
+        <Text style={[styles.timeslotLabel, { color: colors.textSecondary }]}>Pick a time slot</Text>
+        <View style={styles.mobileTimeslotChips}>
+          {TIMESLOT_OPTIONS.map((slot) => (
+            <TouchableOpacity
+              key={slot.key}
+              style={[
+                styles.mobileTimeslotChip,
+                { borderColor: colors.border },
+                timeslot === slot.key && [
+                  styles.mobileTimeslotChipActive,
+                  { backgroundColor: colors.primary, borderColor: colors.primary },
+                ],
+              ]}
+              onPress={() => setTimeslot(slot.key)}
+              activeOpacity={0.8}
+            >
+              <Text
+                style={[
+                  styles.mobileTimeslotChipText,
+                  { color: colors.text },
+                  timeslot === slot.key && { color: '#FFFFFF' },
+                ]}
+              >
+                {slot.label}
+              </Text>
+            </TouchableOpacity>
+          ))}
         </View>
       </View>
 
-      {/* Calendar Modal */}
+      <View style={styles.mobilePassengersCard}>
+        <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>Seats</Text>
+        <View style={[styles.mobilePassengersControl, { borderColor: colors.border, backgroundColor: colors.lightGray }]}>
+          <TouchableOpacity
+            style={styles.mobilePassengersButton}
+            onPress={() => setPassengers(Math.max(1, passengers - 1))}
+          >
+            <Text style={[styles.mobilePassengersButtonText, { color: colors.text }]}>−</Text>
+          </TouchableOpacity>
+          <View style={styles.mobilePassengersValue}>
+            <Text style={[styles.mobilePassengersText, { color: colors.text }]}>{passengers}</Text>
+          </View>
+          <TouchableOpacity
+            style={styles.mobilePassengersButton}
+            onPress={() => setPassengers(Math.min(8, passengers + 1))}
+          >
+            <Text style={[styles.mobilePassengersButtonText, { color: colors.text }]}>+</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+
+      <View style={styles.mobileActions}>
+        <Button
+          title="Search rides"
+          onPress={handleSearch}
+          variant="primary"
+          size="large"
+          style={styles.mobileSearchButton}
+        />
+        <TouchableOpacity onPress={handleReset} style={styles.clearButton}>
+          <Text style={[styles.clearButtonText, { color: colors.primary }]}>Clear search</Text>
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+
+  return (
+    <View style={[styles.container, compact && styles.compactContainer]}>
+      <View style={[styles.searchCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+        {IS_WEB ? renderWebLayout() : renderMobileLayout()}
+      </View>
+
       <Modal
         visible={showDatePicker}
         transparent={true}
@@ -274,29 +358,26 @@ export default function SearchBar({ onSearch, initialValues, compact = false }: 
         onRequestClose={() => setShowDatePicker(false)}
       >
         <View style={styles.modalOverlay}>
-          <View style={[styles.calendarModal, { backgroundColor: colors.card }]}>
+          <View style={[styles.calendarModal, { backgroundColor: colors.card }]}> 
             <View style={styles.calendarHeader}>
               <Text style={[styles.calendarTitle, { color: colors.text }]}>Select Date</Text>
-              <TouchableOpacity
-                onPress={() => setShowDatePicker(false)}
-                style={styles.closeButton}
-              >
+              <TouchableOpacity onPress={() => setShowDatePicker(false)} style={styles.closeButton}>
                 <Text style={[styles.closeButtonText, { color: colors.text }]}>✕</Text>
               </TouchableOpacity>
             </View>
-            
+
             <DatePicker
               label="Select Date"
               value={selectedDate}
-              onChange={(date) => {
-                setSelectedDate(date);
-                setDate(date.toISOString().split('T')[0]);
+              onChange={(pickedDate) => {
+                setSelectedDate(pickedDate);
+                setDate(pickedDate.toISOString().split('T')[0]);
               }}
               minimumDate={new Date()}
               placeholder="Select date"
               showLabel={true}
             />
-            
+
             <View style={styles.calendarFooter}>
               <Button
                 title="Cancel"
@@ -324,41 +405,6 @@ function getTodayDate(): string {
   return today.toISOString().split('T')[0];
 }
 
-async function reverseGeocode(latitude: number, longitude: number): Promise<string | null> {
-  try {
-    const response = await fetch(
-      `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`,
-      {
-        headers: {
-          'User-Agent': 'HushRyd-App/1.0',
-        },
-      }
-    );
-
-    if (!response.ok) {
-      return null;
-    }
-
-    const data = await response.json();
-    if (data?.display_name) {
-      return data.display_name;
-    }
-
-    if (data?.address) {
-      const { road, neighbourhood, suburb, city, town } = data.address;
-      const parts = [road, neighbourhood, suburb, city || town].filter(Boolean);
-      if (parts.length > 0) {
-        return parts.join(', ');
-      }
-    }
-
-    return null;
-  } catch (error) {
-    console.error('Reverse geocode fetch error:', error);
-    return null;
-  }
-}
-
 const styles = StyleSheet.create({
   container: {
     padding: Spacing.lg,
@@ -372,7 +418,10 @@ const styles = StyleSheet.create({
     padding: Spacing.md,
     ...Shadows.medium,
     overflow: 'hidden',
-    position: 'relative',
+  },
+  webCard: {
+    borderRadius: BorderRadius.lg,
+    overflow: 'hidden',
   },
   backgroundImage: {
     position: 'absolute',
@@ -386,7 +435,6 @@ const styles = StyleSheet.create({
     position: 'relative',
     zIndex: 1,
     backgroundColor: IS_WEB ? 'rgba(255, 255, 255, 0.85)' : '#FFFFFF',
-    borderRadius: BorderRadius.lg,
     padding: Spacing.md,
   },
   mainRow: {
@@ -394,24 +442,24 @@ const styles = StyleSheet.create({
     gap: Spacing.md,
   },
   firstRow: {
-    flexDirection: IS_WEB ? 'row' : 'column',
-    alignItems: IS_WEB ? 'flex-start' : 'stretch',
+    flexDirection: 'row',
+    alignItems: 'flex-start',
     gap: Spacing.sm,
     flexWrap: 'nowrap',
     zIndex: 200,
   },
   secondRow: {
-    flexDirection: IS_WEB ? 'row' : 'column',
-    alignItems: IS_WEB ? 'center' : 'stretch',
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: Spacing.md,
     flexWrap: 'nowrap',
   },
   inputWrapper: {
-    width: IS_WEB ? 250 : '100%',
+    width: 250,
     position: 'relative',
   },
   dateWrapper: {
-    width: IS_WEB ? 250 : '100%',
+    width: 250,
     position: 'relative',
     zIndex: 50,
   },
@@ -422,9 +470,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     ...Shadows.small,
-    marginHorizontal: IS_WEB ? Spacing.xs : 0,
-    marginVertical: IS_WEB ? 0 : Spacing.xs,
-    alignSelf: IS_WEB ? 'center' : 'flex-end',
+    alignSelf: 'center',
   },
   swapIcon: {
     fontSize: 16,
@@ -435,7 +481,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   passengerWrapper: {
-    width: IS_WEB ? 250 : '100%',
+    width: 250,
   },
   passengerControl: {
     flexDirection: 'row',
@@ -468,15 +514,13 @@ const styles = StyleSheet.create({
     gap: Spacing.xs,
   },
   timeslotLabel: {
-    fontSize: FontSizes.xs,
+    fontSize: FontSizes.sm,
     fontWeight: '600',
-    marginBottom: Spacing.xs,
   },
   timeslotButtons: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: Spacing.xs,
-    ...(IS_WEB ? {} : { justifyContent: 'space-between' }),
   },
   timeslotButton: {
     flexDirection: 'column',
@@ -487,8 +531,7 @@ const styles = StyleSheet.create({
     borderRadius: BorderRadius.md,
     borderWidth: 1,
     minHeight: 52,
-    minWidth: IS_WEB ? 80 : undefined,
-    ...(IS_WEB ? {} : { width: '31%' }),
+    minWidth: 80,
   },
   timeslotButtonActive: {
     borderWidth: 2,
@@ -503,18 +546,28 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   resetButton: {
+    minWidth: 120,
     minHeight: 52,
-    ...(IS_WEB
-      ? { minWidth: 120 }
-      : { width: '100%', marginBottom: Spacing.sm }),
   },
   searchButton: {
+    minWidth: 120,
     minHeight: 52,
-    ...(IS_WEB
-      ? { minWidth: 120 }
-      : { width: '100%', marginTop: Spacing.sm }),
   },
-  dateInput: {
+  mobileLayout: {
+    gap: Spacing.lg,
+  },
+  mobileTitle: {
+    fontSize: FontSizes.xl,
+    fontWeight: '700',
+  },
+  mobileFieldGroup: {
+    gap: Spacing.xs,
+  },
+  fieldLabel: {
+    fontSize: FontSizes.sm,
+    fontWeight: '600',
+  },
+  mobileDateInput: {
     flexDirection: 'row',
     alignItems: 'center',
     borderWidth: 1,
@@ -523,17 +576,70 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.md,
     gap: Spacing.sm,
   },
-  dateText: {
-    fontSize: FontSizes.md,
-    fontWeight: '500',
-    flex: 1,
+  mobileTimeslotSection: {
+    gap: Spacing.sm,
   },
-  timeSlotTrigger: {
-    padding: Spacing.xs,
-    marginLeft: Spacing.xs,
+  mobileTimeslotChips: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: Spacing.sm,
   },
-  timeSlotIcon: {
+  mobileTimeslotChip: {
+    borderWidth: 1,
+    borderRadius: BorderRadius.round,
+    paddingVertical: Spacing.sm,
+    paddingHorizontal: Spacing.md,
+  },
+  mobileTimeslotChipActive: {
+    borderWidth: 2,
+  },
+  mobileTimeslotChipText: {
     fontSize: FontSizes.sm,
+    fontWeight: '600',
+  },
+  mobilePassengersCard: {
+    gap: Spacing.sm,
+    borderRadius: BorderRadius.lg,
+    borderWidth: 1,
+    padding: Spacing.md,
+  },
+  mobilePassengersControl: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderRadius: BorderRadius.md,
+    height: 52,
+  },
+  mobilePassengersButton: {
+    width: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  mobilePassengersButtonText: {
+    fontSize: 20,
+    fontWeight: '700',
+  },
+  mobilePassengersValue: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  mobilePassengersText: {
+    fontSize: FontSizes.lg,
+    fontWeight: '700',
+  },
+  mobileActions: {
+    gap: Spacing.sm,
+  },
+  mobileSearchButton: {
+    width: '100%',
+  },
+  clearButton: {
+    alignSelf: 'center',
+  },
+  clearButtonText: {
+    fontSize: FontSizes.sm,
+    fontWeight: '600',
   },
   modalOverlay: {
     flex: 1,
@@ -570,12 +676,6 @@ const styles = StyleSheet.create({
     fontSize: FontSizes.lg,
     fontWeight: '600',
   },
-  datePicker: {
-    alignSelf: 'center',
-    marginVertical: Spacing.md,
-    width: '100%',
-    height: 300,
-  },
   calendarFooter: {
     flexDirection: IS_WEB ? 'row' : 'column',
     gap: Spacing.md,
@@ -588,14 +688,5 @@ const styles = StyleSheet.create({
   selectButton: {
     flex: 1,
     ...(IS_WEB ? {} : { width: '100%' }),
-  },
-  webDatePicker: {
-    alignItems: 'center',
-    marginVertical: Spacing.md,
-  },
-  webDateLabel: {
-    fontSize: FontSizes.md,
-    fontWeight: '600',
-    marginBottom: Spacing.sm,
   },
 });
