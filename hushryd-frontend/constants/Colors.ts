@@ -4,29 +4,31 @@ import { Platform } from 'react-native';
 export const CURRENCY_SYMBOL = '₹';
 export const CURRENCY_CODE = 'INR';
 
-// Legacy HushRyd palette preserved for web
+// HushRyd website-inspired palette
 const hushRydLight = {
-  text: '#1DA1F2',
+  text: '#111827', // Dark gray for main text
   background: '#FFFFFF',
-  tint: '#1DA1F2',
-  tabIconDefault: '#C4C8CC',
-  tabIconSelected: '#1DA1F2',
-  primary: '#1DA1F2',
-  secondary: '#228B22',
-  accent: '#FF8C00',
-  success: '#32CD32',
-  warning: '#FFC107',
-  error: '#E63946',
-  border: '#E8ECED',
+  tint: '#2563EB', // Modern blue
+  tabIconDefault: '#9CA3AF',
+  tabIconSelected: '#2563EB',
+  primary: '#2563EB', // Modern blue (matches website)
+  secondary: '#10B981', // Green for success/verified
+  accent: '#F59E0B', // Amber/orange
+  success: '#10B981',
+  warning: '#F59E0B',
+  error: '#EF4444',
+  border: '#E5E7EB',
   card: '#FFFFFF',
-  cardBackground: '#F7F9FA',
-  textSecondary: '#1DA1F2',
-  textTertiary: '#1DA1F2',
-  lightGray: '#F7F9FA',
-  mediumGray: '#E8ECED',
-  darkGray: '#6C7680',
-  gradientStart: '#32CD32',
-  gradientEnd: '#228B22',
+  cardBackground: '#F9FAFB',
+  textSecondary: '#6B7280', // Medium gray
+  textTertiary: '#9CA3AF', // Light gray
+  lightGray: '#F9FAFB',
+  mediumGray: '#E5E7EB',
+  darkGray: '#6B7280',
+  gradientStart: '#2563EB', // Blue gradient start
+  gradientEnd: '#1D4ED8', // Darker blue gradient end
+  heroBackground: '#1E40AF', // Deep blue for hero
+  statsBackground: '#EFF6FF', // Light blue for stats
 };
 
 const hushRydDark = {

@@ -7,6 +7,8 @@ import TimeslotSection from '@/components/TimeslotSection';
 import { useColorScheme } from '@/components/useColorScheme';
 import Colors from '@/constants/Colors';
 import { BorderRadius, FontSizes, Shadows, Spacing } from '@/constants/Design';
+import { useAuth } from '@/contexts/AuthContext';
+import { useRide } from '@/contexts/RideContext';
 import {
   afternoonTimeslots,
   earlyMorningTimeslots,
@@ -22,10 +24,6 @@ import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import React, { useMemo, useState } from 'react';
 import { Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
-import { useClientOnlyValue } from '@/components/useClientOnlyValue';
-import { useAuth } from '@/contexts/AuthContext';
-import { useRide } from '@/contexts/RideContext';
 
 export default function HomeScreen() {
   const colorScheme = useColorScheme();
@@ -133,8 +131,17 @@ export default function HomeScreen() {
       >
         <HeroBanner />
 
-        <View style={[styles.searchCard, { backgroundColor: colors.card }]}>
-          <SearchBar onSearch={handleSearch} />
+        {/* Find Your Next Ride Section */}
+        <View style={styles.searchSection}>
+          <View style={styles.searchSectionHeader}>
+            <Text style={[styles.searchSectionTitle, { color: colors.text }]}>Find Your Next Ride</Text>
+            <Text style={[styles.searchSectionSubtitle, { color: colors.textSecondary }]}>
+              Book instantly or plan ahead
+            </Text>
+          </View>
+          <View style={[styles.searchCard, { backgroundColor: colors.card }]}>
+            <SearchBar onSearch={handleSearch} />
+          </View>
         </View>
 
         <View style={styles.typeSelectorSection}>
@@ -238,21 +245,21 @@ export default function HomeScreen() {
           <View style={styles.statsSection}>
             <Text style={[styles.statsTitle, { color: colors.text }]}>Our Impact</Text>
             <View style={styles.statsGrid}>
-              <View style={[styles.statCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-                <Text style={[styles.statNumber, { color: colors.primary }]}>10K+</Text>
-                <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Happy Users</Text>
-              </View>
-              <View style={[styles.statCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-                <Text style={[styles.statNumber, { color: colors.primary }]}>500+</Text>
-                <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Cities Connected</Text>
-              </View>
-              <View style={[styles.statCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+              <View style={[styles.statCard, { backgroundColor: colors.statsBackground || colors.cardBackground, borderColor: colors.border }]}>
                 <Text style={[styles.statNumber, { color: colors.primary }]}>50K+</Text>
+                <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Active Users</Text>
+              </View>
+              <View style={[styles.statCard, { backgroundColor: colors.statsBackground || colors.cardBackground, borderColor: colors.border }]}>
+                <Text style={[styles.statNumber, { color: colors.primary }]}>1M+</Text>
                 <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Rides Completed</Text>
               </View>
-              <View style={[styles.statCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-                <Text style={[styles.statNumber, { color: colors.primary }]}>₹2M+</Text>
-                <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Saved on Travel</Text>
+              <View style={[styles.statCard, { backgroundColor: colors.statsBackground || colors.cardBackground, borderColor: colors.border }]}>
+                <Text style={[styles.statNumber, { color: colors.primary }]}>4.8★</Text>
+                <Text style={[styles.statLabel, { color: colors.textSecondary }]}>User Rating</Text>
+              </View>
+              <View style={[styles.statCard, { backgroundColor: colors.statsBackground || colors.cardBackground, borderColor: colors.border }]}>
+                <Text style={[styles.statNumber, { color: colors.primary }]}>100%</Text>
+                <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Verified Drivers</Text>
               </View>
             </View>
           </View>
@@ -266,36 +273,107 @@ export default function HomeScreen() {
           </View>
         </View>
 
+      {/* Why ride with HushRyd? */}
       <View style={styles.featuresSection}>
-        <Text style={[styles.sectionTitle, { color: colors.text }]}>Why choose HushRyd?</Text>
+        <View style={styles.sectionHeader}>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>Why ride with HushRyd?</Text>
+          <Text style={[styles.sectionSubtitle, { color: colors.textSecondary }]}>
+            We are redefining intercity travel by prioritizing safety, transparency, and community for everyone.
+          </Text>
+        </View>
         
-        <View style={[styles.featureCard, { backgroundColor: colors.lightGray }]}>
-          <View style={styles.featureIconContainer}>
-            <Text style={styles.featureIcon}>💰</Text>
+        <View style={styles.featuresGrid}>
+          <View style={[styles.featureCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <View style={styles.featureIconContainer}>
+              <Text style={styles.featureIcon}>💰</Text>
+            </View>
+            <Text style={[styles.featureTitle, { color: colors.text }]}>Unbeatable Prices</Text>
+            <Text style={[styles.featureText, { color: colors.textSecondary }]}>
+              Travel for a fraction of the cost of trains or buses. Driver-shared costs mean value for all.
+            </Text>
           </View>
-          <View style={styles.featureContent}>
-            <Text style={[styles.featureTitle, { color: colors.text }]}>Your pick of rides at low prices</Text>
-              <Text style={[styles.featureText, { color: colors.textSecondary }]}>No matter where you're going, find the perfect ride from our wide range of destinations and routes at low prices.</Text>
+
+          <View style={[styles.featureCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <View style={styles.featureIconContainer}>
+              <Text style={styles.featureIcon}>✅</Text>
+            </View>
+            <Text style={[styles.featureTitle, { color: colors.text }]}>Verified Community</Text>
+            <Text style={[styles.featureText, { color: colors.textSecondary }]}>
+              Every member provides Government ID. We verify addresses and things so you know exactly who you're traveling with.
+            </Text>
+          </View>
+
+          <View style={[styles.featureCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <View style={styles.featureIconContainer}>
+              <Text style={styles.featureIcon}>⚡</Text>
+            </View>
+            <Text style={[styles.featureTitle, { color: colors.text }]}>Instant Booking</Text>
+            <Text style={[styles.featureText, { color: colors.textSecondary }]}>
+              No more waiting lists. Find a ride, book your seat instantly, and get immediate confirmation via SMS and app.
+            </Text>
           </View>
         </View>
+      </View>
 
-        <View style={[styles.featureCard, { backgroundColor: colors.lightGray }]}>
-          <View style={styles.featureIconContainer}>
-            <Text style={styles.featureIcon}>🛡️</Text>
+      {/* Safety First Section */}
+      <View style={[styles.safetySection, { backgroundColor: colors.cardBackground }]}>
+        <View style={styles.sectionHeader}>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>Safety First</Text>
+          <Text style={[styles.sectionSubtitle, { color: colors.textSecondary }]}>
+            Your safety is our priority
+          </Text>
+        </View>
+        <Text style={[styles.safetyDescription, { color: colors.textSecondary }]}>
+          We've built state-of-the-art safety features to ensure peace of mind on every kilometer of your journey.
+        </Text>
+
+        <View style={styles.safetyFeaturesGrid}>
+          <View style={[styles.safetyFeatureCard, { backgroundColor: colors.card }]}>
+            <Text style={styles.safetyFeatureIcon}>📍</Text>
+            <Text style={[styles.safetyFeatureTitle, { color: colors.text }]}>Real-time Ride Tracking</Text>
+            <Text style={[styles.safetyFeatureText, { color: colors.textSecondary }]}>
+              Share your live location with friends and family. They can track your journey from start to finish on a map, even if they don't have the app.
+            </Text>
+            <View style={styles.safetyFeatureBullets}>
+              <Text style={[styles.bulletText, { color: colors.textSecondary }]}>• Live GPS updates every 5 seconds</Text>
+              <Text style={[styles.bulletText, { color: colors.textSecondary }]}>• Shareable trip link via WhatsApp/SMS</Text>
+            </View>
           </View>
-          <View style={styles.featureContent}>
-            <Text style={[styles.featureTitle, { color: colors.text }]}>Trust who you travel with</Text>
-              <Text style={[styles.featureText, { color: colors.textSecondary }]}>We check reviews, profiles and IDs, so you know who you're travelling with and can book your ride at ease.</Text>
+
+          <View style={[styles.safetyFeatureCard, { backgroundColor: colors.card }]}>
+            <Text style={styles.safetyFeatureIcon}>🆘</Text>
+            <Text style={[styles.safetyFeatureTitle, { color: colors.text }]}>24/7 SOS Support</Text>
+            <Text style={[styles.safetyFeatureText, { color: colors.textSecondary }]}>
+              In the unlikely event of an emergency, help is just one tap away. Our dedicated safety response team is available around the clock to assist you.
+            </Text>
           </View>
         </View>
+      </View>
 
-        <View style={[styles.featureCard, { backgroundColor: colors.lightGray }]}>
-          <View style={styles.featureIconContainer}>
-            <Text style={styles.featureIcon}>📱</Text>
-          </View>
-          <View style={styles.featureContent}>
-            <Text style={[styles.featureTitle, { color: colors.text }]}>Scroll, click, tap and go!</Text>
-              <Text style={[styles.featureText, { color: colors.textSecondary }]}>Booking a ride has never been easier! Thanks to our simple app, you can book a ride close to you in just minutes.</Text>
+      {/* Driver Earning Section */}
+      <View style={styles.driverSection}>
+        <View style={[styles.driverCard, { backgroundColor: colors.primary }]}>
+          <View style={styles.driverContent}>
+            <Text style={styles.driverTitle}>For Drivers</Text>
+            <Text style={styles.driverSubtitle}>Empty seats are expensive seats.</Text>
+            <Text style={styles.driverDescription}>
+              Cover your fuel costs by sharing your ride. It's easy to post, you choose your passengers, and you get paid directly to your bank account.
+            </Text>
+            <View style={styles.driverStats}>
+              <Text style={styles.driverStatAmount}>₹15,000</Text>
+              <Text style={styles.driverStatLabel}>Avg. monthly earnings</Text>
+            </View>
+            <View style={styles.driverFeatures}>
+              <Text style={styles.driverFeature}>• Post a ride in under 2 minutes</Text>
+              <Text style={styles.driverFeature}>• Choose who rides with you</Text>
+              <Text style={styles.driverFeature}>• Instant bank transfers after ride completion</Text>
+            </View>
+            <TouchableOpacity 
+              style={styles.driverButton}
+              onPress={() => router.push('/publish')}
+            >
+              <Text style={styles.driverButtonText}>Post a Ride Now</Text>
+            </TouchableOpacity>
           </View>
         </View>
       </View>
@@ -348,9 +426,25 @@ const styles = StyleSheet.create({
     ...Shadows.large,
     zIndex: 1000,
   },
-  searchCard: {
-    marginTop: -Spacing.xxxl * 2,
+  searchSection: {
+    marginTop: -Spacing.xxxl,
     marginHorizontal: Spacing.lg,
+  },
+  searchSectionHeader: {
+    alignItems: 'center',
+    marginBottom: Spacing.lg,
+  },
+  searchSectionTitle: {
+    fontSize: FontSizes.xxl,
+    fontWeight: '700',
+    marginBottom: Spacing.xs,
+    textAlign: 'center',
+  },
+  searchSectionSubtitle: {
+    fontSize: FontSizes.md,
+    textAlign: 'center',
+  },
+  searchCard: {
     borderRadius: BorderRadius.xl,
     padding: Spacing.lg,
     ...Shadows.large,
@@ -509,31 +603,163 @@ const styles = StyleSheet.create({
   },
   featuresSection: {
     padding: Spacing.xl,
-    paddingTop: 0,
+    paddingTop: Spacing.xxxl,
+  },
+  sectionHeader: {
+    marginBottom: Spacing.xl,
+    alignItems: 'center',
+  },
+  sectionSubtitle: {
+    fontSize: FontSizes.md,
+    textAlign: 'center',
+    marginTop: Spacing.sm,
+    lineHeight: 22,
+  },
+  featuresGrid: {
+    gap: Spacing.lg,
   },
   featureCard: {
-    flexDirection: 'row',
     padding: Spacing.xl,
     borderRadius: BorderRadius.lg,
-    marginBottom: Spacing.lg,
+    borderWidth: 1,
+    alignItems: 'center',
+    ...Shadows.small,
   },
   featureIconContainer: {
-    marginRight: Spacing.lg,
+    marginBottom: Spacing.md,
   },
   featureIcon: {
     fontSize: 48,
-  },
-  featureContent: {
-    flex: 1,
   },
   featureTitle: {
     fontSize: FontSizes.lg,
     fontWeight: '700',
     marginBottom: Spacing.sm,
+    textAlign: 'center',
   },
   featureText: {
     fontSize: FontSizes.md,
     lineHeight: 22,
+    textAlign: 'center',
+  },
+  safetySection: {
+    padding: Spacing.xl,
+    paddingVertical: Spacing.xxxl,
+    marginTop: Spacing.xl,
+  },
+  safetyDescription: {
+    fontSize: FontSizes.md,
+    textAlign: 'center',
+    marginBottom: Spacing.xl,
+    lineHeight: 22,
+  },
+  safetyFeaturesGrid: {
+    gap: Spacing.lg,
+  },
+  safetyFeatureCard: {
+    padding: Spacing.xl,
+    borderRadius: BorderRadius.lg,
+    ...Shadows.small,
+  },
+  safetyFeatureIcon: {
+    fontSize: 48,
+    marginBottom: Spacing.md,
+    textAlign: 'center',
+  },
+  safetyFeatureTitle: {
+    fontSize: FontSizes.lg,
+    fontWeight: '700',
+    marginBottom: Spacing.sm,
+    textAlign: 'center',
+  },
+  safetyFeatureText: {
+    fontSize: FontSizes.md,
+    lineHeight: 22,
+    textAlign: 'center',
+    marginBottom: Spacing.sm,
+  },
+  safetyFeatureBullets: {
+    marginTop: Spacing.sm,
+  },
+  bulletText: {
+    fontSize: FontSizes.sm,
+    lineHeight: 20,
+    marginBottom: Spacing.xs,
+  },
+  driverSection: {
+    padding: Spacing.xl,
+    paddingTop: 0,
+  },
+  driverCard: {
+    borderRadius: BorderRadius.xl,
+    padding: Spacing.xxxl,
+    ...Shadows.large,
+  },
+  driverContent: {
+    alignItems: 'center',
+  },
+  driverTitle: {
+    fontSize: FontSizes.xxl,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    marginBottom: Spacing.sm,
+    textAlign: 'center',
+  },
+  driverSubtitle: {
+    fontSize: FontSizes.xl,
+    fontWeight: '600',
+    color: '#FFFFFF',
+    marginBottom: Spacing.md,
+    textAlign: 'center',
+  },
+  driverDescription: {
+    fontSize: FontSizes.md,
+    color: 'rgba(255, 255, 255, 0.95)',
+    textAlign: 'center',
+    lineHeight: 22,
+    marginBottom: Spacing.xl,
+  },
+  driverStats: {
+    alignItems: 'center',
+    marginBottom: Spacing.xl,
+    paddingVertical: Spacing.lg,
+    paddingHorizontal: Spacing.xl,
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    borderRadius: BorderRadius.lg,
+    width: '100%',
+  },
+  driverStatAmount: {
+    fontSize: FontSizes.xxxl + 8,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    marginBottom: Spacing.xs,
+  },
+  driverStatLabel: {
+    fontSize: FontSizes.sm,
+    color: 'rgba(255, 255, 255, 0.9)',
+    fontWeight: '500',
+  },
+  driverFeatures: {
+    width: '100%',
+    marginBottom: Spacing.xl,
+  },
+  driverFeature: {
+    fontSize: FontSizes.md,
+    color: 'rgba(255, 255, 255, 0.95)',
+    marginBottom: Spacing.sm,
+    paddingLeft: Spacing.md,
+  },
+  driverButton: {
+    backgroundColor: '#FFFFFF',
+    paddingVertical: Spacing.md,
+    paddingHorizontal: Spacing.xl,
+    borderRadius: BorderRadius.md,
+    ...Shadows.medium,
+  },
+  driverButtonText: {
+    fontSize: FontSizes.md,
+    fontWeight: '700',
+    color: '#2563EB',
   },
   bottomPadding: {
     height: Spacing.xxl,

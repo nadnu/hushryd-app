@@ -1,7 +1,6 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import React from 'react';
-import { Dimensions, ImageBackground, StyleSheet, Text, View } from 'react-native';
-import Images from '../assets/images';
+import { Dimensions, StyleSheet, Text, View } from 'react-native';
 import { BorderRadius, FontSizes, Shadows, Spacing } from '../constants/Design';
 
 interface HeroBannerProps {
@@ -14,61 +13,52 @@ export default function HeroBanner({}: HeroBannerProps) {
   return (
     <View style={styles.container}>
       {/* Main Hero Section */}
-      <View style={styles.heroSection}>
-        <ImageBackground
-          source={Images.banner}
-          style={styles.heroBackground}
-          imageStyle={styles.backgroundImage}
-          resizeMode="cover"
-        >
-          {/* Overlay for better text readability */}
-          <LinearGradient
-            colors={['rgba(0, 0, 0, 0.3)', 'rgba(0, 0, 0, 0.1)', 'rgba(0, 0, 0, 0.4)']}
-            style={styles.overlay}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-          />
+      <LinearGradient
+        colors={['#1E40AF', '#2563EB', '#3B82F6']}
+        style={styles.heroSection}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+      >
+        {/* Main Content */}
+        <View style={styles.heroContent}>
+          {/* Main Tagline */}
+          <View style={styles.textSection}>
+            <Text style={styles.mainTagline}>India's Most Trusted Carpooling Platform</Text>
+            <Text style={styles.headline}>Save Money. Make Friends.</Text>
+            <Text style={styles.subheadline}>
+              Join 50,000+ riders carpooling across India. Cut your travel costs by up to 70% while reducing your carbon footprint.
+            </Text>
+          </View>
           
-          {/* Decorative Elements */}
-          <View style={styles.decorativeCircle1} />
-          <View style={styles.decorativeCircle2} />
-          <View style={styles.decorativeCircle3} />
-          
-          {/* Main Content */}
-          <View style={styles.heroContent}>
-            {/* Welcome Text */}
-            <View style={styles.textSection}>
-              <Text style={styles.welcomeText}>Welcome to</Text>
-              <Text style={styles.brandText}>HushRyd</Text>
-              <Text style={styles.taglineText}>Your Premium Ride Experience</Text>
+          {/* Statistics */}
+          <View style={styles.statsContainer}>
+            <View style={styles.statItem}>
+              <Text style={styles.statNumber}>50K+</Text>
+              <Text style={styles.statLabel}>Active Users</Text>
             </View>
-            
-            {/* Feature Icons */}
-            <View style={styles.featuresSection}>
-              <View style={styles.featureItem}>
-                <View style={styles.featureIcon}>
-                  <Text style={styles.featureEmoji}>🚗</Text>
-                </View>
-                <Text style={styles.featureText}>Premium Cars</Text>
-              </View>
-              
-              <View style={styles.featureItem}>
-                <View style={styles.featureIcon}>
-                  <Text style={styles.featureEmoji}>⭐</Text>
-                </View>
-                <Text style={styles.featureText}>5-Star Service</Text>
-              </View>
-              
-              <View style={styles.featureItem}>
-                <View style={styles.featureIcon}>
-                  <Text style={styles.featureEmoji}>🛡️</Text>
-                </View>
-                <Text style={styles.featureText}>Safe & Secure</Text>
-              </View>
+            <View style={styles.statItem}>
+              <Text style={styles.statNumber}>1M+</Text>
+              <Text style={styles.statLabel}>Rides Completed</Text>
+            </View>
+            <View style={styles.statItem}>
+              <Text style={styles.statNumber}>4.8★</Text>
+              <Text style={styles.statLabel}>User Rating</Text>
+            </View>
+            <View style={styles.statItem}>
+              <Text style={styles.statNumber}>100%</Text>
+              <Text style={styles.statLabel}>Verified</Text>
             </View>
           </View>
-        </ImageBackground>
-      </View>
+
+          {/* Safety Features */}
+          <View style={styles.safetyFeatures}>
+            <Text style={styles.safetyText}>✓ Live GPS Tracking</Text>
+            <Text style={styles.safetyText}>✓ Verified drivers</Text>
+            <Text style={styles.safetyText}>✓ Safe ride tracking</Text>
+            <Text style={styles.safetyText}>✓ Affordable travel</Text>
+          </View>
+        </View>
+      </LinearGradient>
     </View>
   );
 }
@@ -76,135 +66,83 @@ export default function HeroBanner({}: HeroBannerProps) {
 const styles = StyleSheet.create({
   container: {
     marginHorizontal: Spacing.lg,
-    marginVertical: Spacing.lg,
+    marginTop: Spacing.lg,
   },
   heroSection: {
-    height: 320,
     borderRadius: BorderRadius.xl,
     overflow: 'hidden',
     position: 'relative',
     ...Shadows.large,
-  },
-  heroBackground: {
-    flex: 1,
-    width: '100%',
-    height: '100%',
-  },
-  backgroundImage: {
-    borderRadius: BorderRadius.xl,
-  },
-  overlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    borderRadius: BorderRadius.xl,
-  },
-  // Decorative circles for visual appeal
-  decorativeCircle1: {
-    position: 'absolute',
-    top: -30,
-    right: -30,
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-  },
-  decorativeCircle2: {
-    position: 'absolute',
-    bottom: -20,
-    left: -20,
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
-  },
-  decorativeCircle3: {
-    position: 'absolute',
-    top: 50,
-    right: 20,
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255, 255, 255, 0.06)',
+    paddingVertical: Spacing.xxxl * 1.5,
+    paddingHorizontal: Spacing.xl,
   },
   heroContent: {
-    flex: 1,
-    paddingHorizontal: Spacing.xl,
-    paddingVertical: Spacing.lg,
-    position: 'relative',
-    zIndex: 1,
-    justifyContent: 'space-between',
+    alignItems: 'center',
   },
   textSection: {
     alignItems: 'center',
-    marginBottom: Spacing.lg,
-    flex: 1,
-    justifyContent: 'center',
+    marginBottom: Spacing.xxxl,
   },
-  welcomeText: {
+  mainTagline: {
+    fontSize: FontSizes.md,
+    color: 'rgba(255, 255, 255, 0.9)',
+    fontWeight: '600',
+    marginBottom: Spacing.md,
+    textAlign: 'center',
+    letterSpacing: 0.5,
+  },
+  headline: {
+    fontSize: FontSizes.huge + 8,
+    color: '#FFFFFF',
+    fontWeight: '800',
+    marginBottom: Spacing.md,
+    textAlign: 'center',
+    lineHeight: FontSizes.huge + 12,
+  },
+  subheadline: {
     fontSize: FontSizes.lg,
     color: 'rgba(255, 255, 255, 0.95)',
-    fontWeight: '500',
-    marginBottom: Spacing.sm,
+    fontWeight: '400',
     textAlign: 'center',
-    textShadowColor: 'rgba(0, 0, 0, 0.8)',
-    textShadowOffset: { width: 0, height: 2 },
-    textShadowRadius: 4,
+    lineHeight: 24,
+    paddingHorizontal: Spacing.md,
+    marginTop: Spacing.sm,
   },
-  brandText: {
+  statsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    width: '100%',
+    marginBottom: Spacing.xl,
+    flexWrap: 'wrap',
+  },
+  statItem: {
+    alignItems: 'center',
+    minWidth: 80,
+    marginVertical: Spacing.sm,
+  },
+  statNumber: {
     fontSize: FontSizes.xxxl,
     color: '#FFFFFF',
-    fontWeight: 'bold',
-    marginBottom: Spacing.md,
-    textShadowColor: 'rgba(0, 0, 0, 0.8)',
-    textShadowOffset: { width: 0, height: 3 },
-    textShadowRadius: 6,
-    textAlign: 'center',
+    fontWeight: '800',
+    marginBottom: Spacing.xs,
   },
-  taglineText: {
-    fontSize: FontSizes.md,
+  statLabel: {
+    fontSize: FontSizes.sm,
     color: 'rgba(255, 255, 255, 0.9)',
     fontWeight: '500',
     textAlign: 'center',
-    lineHeight: 20,
-    paddingHorizontal: Spacing.sm,
-    textShadowColor: 'rgba(0, 0, 0, 0.7)',
-    textShadowOffset: { width: 0, height: 2 },
-    textShadowRadius: 4,
   },
-  featuresSection: {
+  safetyFeatures: {
     flexDirection: 'row',
-    justifyContent: 'space-around',
-    alignItems: 'center',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    gap: Spacing.md,
     marginTop: Spacing.md,
   },
-  featureItem: {
-    alignItems: 'center',
-    flex: 1,
-  },
-  featureIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255, 255, 255, 0.15)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: Spacing.xs,
-    ...Shadows.small,
-  },
-  featureEmoji: {
-    fontSize: 20,
-  },
-  featureText: {
-    fontSize: FontSizes.xs,
+  safetyText: {
+    fontSize: FontSizes.sm,
     color: 'rgba(255, 255, 255, 0.95)',
     fontWeight: '500',
-    textAlign: 'center',
-    lineHeight: 14,
-    textShadowColor: 'rgba(0, 0, 0, 0.6)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 2,
+    paddingHorizontal: Spacing.sm,
   },
 });
